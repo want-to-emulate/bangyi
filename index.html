@@ -2927,7 +2927,7 @@ function toolsPanel() {
   return h + '</div>';
 }
 /* ---------- 城：终点站小城（400 km 起就能进） ---------- */
-var CITY_KM = 400;
+var CITY_KM = 0;   /* 试营业：临时门槛，试完改回 400 */
 var SLOTS = [['desk', '桌上'], ['wall', '墙上'], ['bed', '床边'], ['win', '窗台'], ['floor', '地面']];
 var FSLOT = { desk: 'floor', lamp: 'desk', cup: 'desk', bed: 'floor', audio: 'desk', fridge: 'floor', photo: 'wall', shelf: 'wall' };
 var SLOTN = { desk: '桌上', wall: '墙上', bed: '床边', win: '窗台', floor: '地面' };
@@ -3003,7 +3003,7 @@ function citySVG() {
     + '<rect x="144" y="136" width="72" height="12" fill="#2a2240"/>'
     + '<rect x="151" y="124" width="58" height="14" rx="2.5" fill="#1d6b5a" stroke="rgba(255,255,255,.34)" stroke-width="1.2"/>'
     + '<text x="180" y="134" font-size="8.5" text-anchor="middle" fill="rgba(255,255,255,.92)" font-family="ui-monospace,Consolas,monospace">'
-    + (at ? '终 点 站' : 'K ' + CITY_KM) + '</text>'
+    + (at ? '终 点 站' : (CITY_KM === 0 ? '试 营 业' : 'K ' + CITY_KM)) + '</text>'
     + '<circle cx="151" cy="159" r="9" fill="url(#clamp)"/>'
     + '<circle cx="209" cy="159" r="9" fill="url(#clamp)"/>'
     + '<circle cx="151" cy="159" r="2.2" fill="#ffd79a"/><circle cx="209" cy="159" r="2.2" fill="#ffd79a"/>'
