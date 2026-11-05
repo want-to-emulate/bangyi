@@ -1045,7 +1045,7 @@ function render(){
     if(TAB === 'drive') h += renderDrive();
     else if(TAB === 'hw') h += renderHw();
     else if(TAB === 'car') h += renderCar();
-        else if(TAB === 'tower') h += renderTower();
+        else if(TAB === 'tower') h += renderTower() + renderSpots();
     else if(TAB === 'svc') h += renderSvc();
     else if(TAB === 'city') h += renderCity();
     else h += renderGarage();
@@ -1057,7 +1057,7 @@ function render(){
 
 function renderNav(){
   if(!S.veh){ $('nav').innerHTML=''; return }
-  var items=[['drive','上路'],['hw','车间'],['car','仓'],['tower','塔'],['garage','家'],['city','城']];
+  var items=[['drive','上路'],['hw','车间'],['car','仓'],['tower','副'],['garage','家'],['city','城']];
   $('nav').innerHTML=items.map(function(it){
     var cls=(TAB===it[0]?'on':'');
     var dot=(it[0]==='tower'&&towerReady())?'<i class="dot on"></i>':'<i class="dot"></i>';
@@ -2274,6 +2274,137 @@ function dunLeave(){
   snd('coin'); save(); render();
 }
 
+/* ---------- 副本：塔以外的另外两类（关卡 / 夜行） ---------- */
+var GATES = [
+  { id:'toll', n:'收费站关卡', s:'栏杆、收费员、一盏白灯', o:[
+      { t:'付 10 点过去', e:{ pts:-10 }, r:'钱递过去，栏杆抬起来。你听见自己心跳。' },
+      { t:'跟在前车后面蹭过去', e:{ box:1, risk:.35 }, r:'蹭过去了。背后有人喊了一声，你没回头。' },
+      { t:'掉头走小路', e:{ km:.4, nrg:-10 }, r:'多绕了 0.4 公里，路上一个人也没有。' } ] },
+  { id:'check', n:'隧道检查站', s:'锥桶、手电、一排等着的人', o:[
+      { t:'排队等着', e:{ nrg:-12, hyg:-8 }, r:'队伍挪得比想象中快。你等到了一盏绿灯。' },
+      { t:'去旁边买瓶水', e:{ pts:-2, thirst:40, box:1 }, r:'水是温的，但喝下去人清醒了。' },
+      { t:'绕到最前面去问', e:{ pts:2, risk:.25 }, r:'你问了一句，还真有人理你。' } ] },
+  { id:'gap', n:'断桥', s:'一半的路面不见了', o:[
+      { t:'贴边走', e:{ nrg:-18, hyg:-10, box:1 }, r:'脚下就是空的。走过去之后手一直在抖。' },
+      { t:'等别人先走', e:{ nrg:-8, pts:2 }, r:'前面那辆车过去了，你跟着它的路线。' },
+      { t:'原路退回', e:{ km:-0, inf:1 }, r:'退回来了。今天这一段白跑。' } ] }
+];
+var NIGHTS = [
+  { id:'bus', n:'末班公交', s:'车上只有司机和一个睡着的人', o:[
+      { t:'坐到最后排', e:{ nrg:22 }, r:'车晃着，你睡了二十分钟，醒来发现坐过了一站。' },
+      { t:'跟司机聊两句', e:{ pts:3 }, r:'他说他跑这条线十七年了，一天没请过假。' },
+      { t:'下车走一段', e:{ km:.5, nrg:-8 }, r:'夜里的路比白天长，但走起来踏实。' } ] },
+  { id:'under', n:'地下通道', s:'灯坏了一半', o:[
+      { t:'快点走过去', e:{ nrg:-6, inf:1 }, r:'脚步声在墙上回来回去。走到头才敢喘气。' },
+      { t:'靠着墙站一会儿', e:{ inf:-1 }, r:'站了两分钟。什么都没有发生，你听见了自己的呼吸。' },
+      { t:'把地上那张纸捡起来', e:{ box:1 }, r:'是一张旧的购物清单，背面还能写字。' } ] },
+  { id:'store', n:'便利店夜班', s:'荧光灯嗡嗡响', o:[
+      { t:'买一杯热的', e:{ pts:-2, full:20, thirst:20 }, r:'关东煮的热气扑在脸上，人一下就活了。' },
+      { t:'在窗边坐十分钟', e:{ nrg:12, hyg:4 }, r:'窗外没人。你什么也没想。' },
+      { t:'问问招不招人', e:{ pts:4 }, r:'店长笑了一下，说夜班缺人，但你只是来买水的。' } ] },
+  { id:'cave', n:'桥洞', s:'有人的呼吸声', o:[
+      { t:'放轻脚步走过去', e:{ nrg:-5 }, r:'呼吸声没有停，也没有跟上来。' },
+      { t:'放下半块饼干', e:{ full:-8, inf:-1 }, r:'黑暗里有人说了句什么，你没听清。' },
+      { t:'打开手机灯照一下', e:{ box:1, risk:.3 }, r:'只有一堆纸箱。其中一个里面有东西。' } ] }
+];
+
+function spotList(kind){ return kind === 'gate' ? GATES : NIGHTS; }
+function spotOf(kind, id){
+  var a = spotList(kind);
+  for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i];
+  return null;
+}
+function gateLeft(){
+  var d = S.days[dkey()] || { seg:0 };
+  return Math.max(0, 3 - (d.seg || 0));
+}
+function gateOpen(){ return gateLeft() === 0 }
+function nightOpen(){ var hh = new Date().getHours(); return hh >= 22 || hh < 3 }
+function spotDone(kind, id){
+  var v = S.spotDone || {};
+  return v[id] === dkey();
+}
+function spotCan(kind, id){
+  if (spotDone(kind, id)) return '今天去过了';
+  if (kind === 'gate' && !gateOpen()) return '还差 ' + gateLeft() + ' 段';
+  if (kind === 'night' && !nightOpen()) return '22 点后';
+  return '';
+}
+function spotFx(e){
+  var m = [];
+  if (e.pts) { S.points = Math.max(0, S.points + e.pts); m.push('点数 ' + (e.pts > 0 ? '+' : '') + e.pts) }
+  if (e.km) { S.km = Math.max(0, Math.round((S.km + e.km) * 10) / 10); m.push('里程 ' + (e.km > 0 ? '+' : '') + e.km + ' km') }
+  if (e.box) { S.boxes = (S.boxes || 0) + e.box; m.push('箱子 +' + e.box) }
+  if (e.mod) { S.mods += e.mod; m.push('改装件 +' + e.mod) }
+  if (e.inf) { S.st.inf = clamp((S.st.inf || 0) + e.inf, 0, 3); m.push('感染 ' + (e.inf > 0 ? '+' : '') + e.inf) }
+  ['full','thirst','nrg','hyg'].forEach(function(k){
+    if (e[k]) { step(k, e[k]); m.push({ full:'饱腹', thirst:'口渴', nrg:'精力', hyg:'卫生' }[k] + ' ' + (e[k] > 0 ? '+' : '') + e[k]) }
+  });
+  if (e.item) { S.inv[e.item] = (S.inv[e.item] || 0) + 1; m.push('拿到 ' + NAME[e.item]) }
+  return m;
+}
+function openSpot(kind, id){
+  var why = spotCan(kind, id);
+  if (why) return toast(why);
+  var s = spotOf(kind, id); if (!s) return;
+  var h = '<p class="ptitle">' + esc(s.n) + '</p>'
+    + '<div class="hint" style="text-align:left;font-size:12px;line-height:1.7">' + esc(s.s) + '</div>';
+  s.o.forEach(function(o, i){
+    h += '<div class="item"><div class="n" style="font-weight:600">' + esc(o.t) + '</div>'
+      + '<button class="mini" onclick="A.spotPick(\'' + kind + '\',\'' + id + '\',' + i + ')">选这个</button></div>';
+  });
+  h += '<div class="btns" style="margin-top:12px"><button class="big ghost" onclick="A.close()">再想想</button></div>';
+  modal(h);
+}
+function spotPick(kind, id, i){
+  var s = spotOf(kind, id); if (!s) return;
+  var o = s.o[i]; if (!o) return;
+  var m = spotFx(o.e || {});
+  var risk = (o.e && o.e.risk) || 0;
+  if (risk) {
+    if (rnd() < risk) { S.st.inf = clamp((S.st.inf || 0) + 1, 0, 3); m.push('感染 +1') }
+    else { S.boxes = (S.boxes || 0) + 1; m.push('箱子 +1') }
+  }
+  S.spotDone = S.spotDone || {};
+  S.spotDone[id] = dkey();
+  var txt = (o.r || '') + (m.length ? '\n' + m.join(' · ') : '');
+  snd(risk && (S.st.inf || 0) > 0 ? 'err' : 'coin');
+  save();
+  closeModalSilent();
+  showResult(s.n, txt);
+}
+function showResult(title, txt){
+  var h = '<div class="modal"><h3>' + esc(title) + '</h3><p style="white-space:pre-line">' + esc(txt) + '</p>'
+    + '<div class="btns"><button class="big primary" onclick="A.close()">知道了</button></div></div>';
+  modal(h);
+}
+function closeModalSilent(){
+  var m = $('mask'); if (m && m.parentNode) m.parentNode.removeChild(m);
+}
+function renderSpots(){
+  var h = '<div class="panel"><p class="ptitle">关 卡</p>'
+    + '<div class="hint" style="text-align:left;font-size:11.5px;line-height:1.7">'
+    + (gateOpen() ? '今天已经跑满 3 段，关卡都开着。' : '今天跑满 3 段才开。还差 ' + gateLeft() + ' 段。') + '</div>';
+  GATES.forEach(function(g){
+    var why = spotCan('gate', g.id);
+    h += '<div class="item"><div class="n">' + esc(g.n) + '<small> ' + esc(g.s) + '</small></div>'
+      + '<button class="mini" ' + (why ? 'disabled' : '') + ' onclick="A.openSpot(\'gate\',\'' + g.id + '\')">'
+      + (why || '过去') + '</button></div>';
+  });
+  h += '</div>';
+
+  h += '<div class="panel"><p class="ptitle">夜 行</p>'
+    + '<div class="hint" style="text-align:left;font-size:11.5px;line-height:1.7">'
+    + (nightOpen() ? '22 点以后，路上会出现这些东西。' : '晚上 22 点以后才开。现在开不了。') + '</div>';
+  NIGHTS.forEach(function(g){
+    var why = spotCan('night', g.id);
+    h += '<div class="item"><div class="n">' + esc(g.n) + '<small> ' + esc(g.s) + '</small></div>'
+      + '<button class="mini" ' + (why ? 'disabled' : '') + ' onclick="A.openSpot(\'night\',\'' + g.id + '\')">'
+      + (why || '过去') + '</button></div>';
+  });
+  h += '</div>';
+  return h;
+}
 /* ---------- 路上的随机事件 ---------- */
 // w = 权重（越大越常见）· once = 只发生一次 · need = 需要之前某个事件留下的 flag
 // when(ph, z) = 只在特定时段/区域出现 · set = 这次选择留下的 flag
@@ -3381,7 +3512,7 @@ function sfxToggle(){ S.sfx = sfxOn() ? 0 : 1; save(); render(); snd('tap') }
 A.towerSel=towerSel; A.towerStart=towerStart; A.towerEnter=towerEnter; A.towerCard=towerCard; A.towerRule=towerRule; A.towerNote=towerNote; A.sfxToggle=sfxToggle;
 A.evPick=evPick; A.calm=calm; A.showEv=function(){ if(S.curEv!=null) showEvent(S.curEv) }; A.raw=function(){ return S }; A.maybeEv=maybeEvent; A.evList=function(){ return EVENTS.map(function(e){return e.t}) };
 A.snack=snack; A.trinkets=function(){ return (S.trinkets||[]) }; A.lootPool=function(q){ return POOL[q].map(function(p){return p.k}) };
-A.dunEnter=dunEnter; A.dunChoice=dunChoice; A.dunClose=dunClose; A.dunDeep=dunDeep; A.dunLeave=dunLeave; A.openShop=openShop; A.stallBuy=stallBuy; A.sell=sell; A.cancelAsk=cancelAsk; A.cancelSeg=cancelSeg; A.toolUse=toolUse; A.cityBuy=cityBuy; A.citySlot=citySlot; A.citySet=citySet; A.cityClear=cityClear; A.cityPark=cityPark; A.toolAdd=toolAdd; A.tools=function(){ return TOOLS }; A.openRank=openRank;
+A.dunEnter=dunEnter; A.dunChoice=dunChoice; A.dunClose=dunClose; A.dunDeep=dunDeep; A.dunLeave=dunLeave; A.openShop=openShop; A.stallBuy=stallBuy; A.sell=sell; A.cancelAsk=cancelAsk; A.cancelSeg=cancelSeg; A.toolUse=toolUse; A.cityBuy=cityBuy; A.citySlot=citySlot; A.citySet=citySet; A.cityClear=cityClear; A.cityPark=cityPark; A.toolAdd=toolAdd; A.tools=function(){ return TOOLS }; A.openRank=openRank; A.openSpot=openSpot; A.spotPick=spotPick;
 
 /* ---------- 启动 ---------- */
 S=load();
