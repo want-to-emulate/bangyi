@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>榜一 · 安装诊断</title>
+<style>
+  :root{color-scheme:dark}
+  body{margin:0;padding:18px 16px 40px;background:#0b0912;color:#e9e2d6;
+    font:14px/1.7 -apple-system,"Noto Sans SC","Microsoft YaHei",sans-serif}
+  h1{font-size:17px;letter-spacing:.14em;margin:0 0 14px;color:#f0b458}
+  .row{display:flex;gap:10px;padding:9px 12px;border-radius:12px;background:#161326;
+    border:1px solid #241f3a;margin:0 0 8px}
+  .k{flex:0 0 8.6em;color:#8d84a0;font-size:12.5px}
+  .v{flex:1;word-break:break-all;font-family:ui-monospace,Consolas,monospace;font-size:12.5px}
+  .ok{color:#8ee8b8}.no{color:#ff8f8f}
+  .tip{margin-top:18px;color:#6f6580;font-size:12px;line-height:1.8}
+</style>
+</head>
+<body>
+<h1>安 装 诊 断</h1>
+<div id="out"></div>
+<p class="tip">这一页只是把浏览器看到的东西列出来，改了也不会影响存档。<br>截图发给我就行，我按这张表定位。</p>
+<script>
+(function(){
+  var out = document.getElementById('out');
+  var rows = [];
+  function add(k, v, cls){ rows.push({k:k, v:v, c:cls||''}); paint(); }
+  function paint(){
+    out.innerHTML = rows.map(function(r){
+      return '<div class="row"><div class="k">'+r.k+'</div><div class="v '+r.c+'">'+r.v+'</div></div>';
+    }).join('');
+  }
+  function yn(b){ return b ? '是' : '否'; }
+
+  add('浏览器', navigator.userAgent);
+  add('协议', location.protocol + (location.protocol === 'https:' ? ' ✓' : ' ✗ 必须是 https'));
+  add('已装到桌面', yn(window.matchMedia('(display-mode: standalone)').matches));
+  add('SW 支持', yn('serviceWorker' in navigator));
+  add('BIP 支持', yn('onbeforeinstallprompt' in window));
+
+  window.addEventListener('beforeinstallprompt', function(){
+    add('beforeinstallprompt', '已触发 ✓', 'ok');
+  });
+  window.addEventListener('appinstalled', function(){ add('appinstalled', '已安装 ✓', 'ok'); });
+
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.getRegistrations().then(function(rs){
+      add('已注册 SW', rs.length ? rs.length + ' 个，作用域 ' + rs.map(function(r){return r.scope}).join(' | ') : '无 ✗', rs.length ? 'ok' : 'no');
+    }).catch(function(e){ add('已注册 SW', '读取失败 ' + e.message, 'no'); });
+
+    navigator.serviceWorker.addEventListener('controllerchange', function(){ add('controller', '已接管 ✓', 'ok'); });
+    setTimeout(function(){
+      add('controller', navigator.serviceWorker.controller ? '有 ✓' : '无 ✗（刷新一次再看）', navigator.serviceWorker.controller ? 'ok' : 'no');
+    }, 1200);
+  }
+
+  fetch('./manifest.webmanifest', {cache:'no-store'}).then(function(r){
+    add('manifest', r.status + ' ' + (r.headers.get('content-type')||''));
+    return r.json();
+  }).then(function(j){
+    add('manifest 内容', (j.name||'无 name') + ' · ' + (j.display||'') + ' · ' + (j.icons ? j.icons.length + ' 个图标' : '无图标'));
+    add('start_url', j.start_url || '无');
+  }).catch(function(e){ add('manifest', '读取失败 ' + e.message, 'no'); });
+
+  fetch('./sw.js', {cache:'no-store'}).then(function(r){
+    add('sw.js', r.status + ' ' + (r.headers.get('content-type')||''));
+  }).catch(function(e){ add('sw.js', '失败 ' + e.message, 'no'); });
+
+  add('屏幕', window.innerWidth + ' × ' + window.innerHeight + ' dpr ' + (window.devicePixelRatio||1));
+})();
+</script>
+</body>
+</html>
