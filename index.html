@@ -398,6 +398,14 @@
 .modal .evi{font-size:22px;line-height:1;margin-bottom:8px;text-align:center}
 .modal .evg{display:inline-block;font-size:11.5px;color:#0b0912;background:var(--amber);
   border-radius:999px;padding:3px 10px;margin:4px 0 2px;font-weight:700}
+/* v0.10 掉落表 */
+.dp .dpr{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid rgba(255,255,255,.05);font-size:12.5px}
+.dp .dpr:last-of-type{border-bottom:0}
+.dp .dpr b{font-weight:700;width:18px;text-align:center;font-size:12px}
+.dp .dpr span{flex:1;color:#e8e2d6}
+.dp .dpr em{font-style:normal;font-size:10.5px;color:var(--dim);text-align:right;line-height:1.4}
+.dp .q0{color:#c9ced4}.dp .q1{color:var(--ok)}.dp .q2{color:var(--blue)}
+.dp .q3{color:var(--purple)}.dp .q4{color:var(--gold)}
 </style>
 
 <link rel="manifest" href="./manifest.webmanifest">
@@ -645,6 +653,12 @@ function supplyFor(q){
   for(var k in t) out[k]=t[k];
   if(S.veh==='pickup'){ out.water=(out.water||0)+1 }
   return out;
+}
+function partRoll(q){
+  if(q>=4) return 1;
+  if(q===3) return rnd()<.30?1:0;
+  if(q===2) return rnd()<.08?1:0;
+  return 0
 }
 function rollFurn(q){
   if(q<2) return null;
@@ -2217,6 +2231,16 @@ function renderCar(){
     });
     h+='</div></div>';
   }
+
+  h+='<div class="panel"><p class="ptitle">箱 子 里 能 开 出</p><div class="dp">';
+  h+='<div class="dpr"><b class="q0">白</b><span>水 ×1</span></div>';
+  h+='<div class="dpr"><b class="q1">绿</b><span>水 ×2</span></div>';
+  h+='<div class="dpr"><b class="q2">蓝</b><span>水 ×3 · 饼干 ×1</span><em>家具 15% · 改装件 8%</em></div>';
+  h+='<div class="dpr"><b class="q3">紫</b><span>水 ×5 · 洗漱包 ×1</span><em>家具 40% · 改装件 30%</em></div>';
+  h+='<div class="dpr"><b class="q4">金</b><span>水 ×5 · 洗漱包 ×2 · 药 ×1</span><em>家具 100% · 改装件 100%</em></div>';
+  h+='</div><div class="hint" style="text-align:left">皮卡每箱多 1 瓶水。攒着一起开，每多一个 +5% 品质（最多 9 个）。<br>'
+   +'改装件不止车间能做：这里能翻出来，塔通关给 1 件，服务区 25 点也能买。</div></div>';
+
   return h;
 }
 function renderGarage(){
@@ -2377,6 +2401,7 @@ window.A={
     if(!S.boxes) return;
     var n=Math.min(9,S.boxes), bonus=Math.min(9,n)-1;
     S.boxes-=n;
+    var parts=0;
     for(var i=0;i<n;i++){
       var q=rollQ(Math.max(0,Math.round(bonus*.5)));
       var sup=supplyFor(q);
@@ -2384,8 +2409,10 @@ window.A={
       var fe=rollFurn(q);
       if(fe&&fe!=='dup') S.furn.push(fe);
       else if(fe==='dup') S.points+=5;
+      if(partRoll(q)) parts++;
     }
-    toast('开了 '+n+' 个箱子');
+    if(parts) S.mods+=parts;
+    toast('开了 '+n+' 个箱子'+(parts?'，翻出 '+parts+' 件改装件':''));
     save(); render();
   },
   use:function(k){
