@@ -647,7 +647,7 @@ function rollover(){
   var t=dkey();
   if(S.day===t) return false;
   var days=dayDiff(S.day,t);
-  var k=decayMul();
+  var k=decayMul()*(S.parked?0.6:1)*(comfort()>=5?0.85:1);
   var d1=Math.min(2,days), d2=Math.max(0,days-2);
   var per=d1*1+d2*0.5;
   step('full',-5*per*k); step('thirst',-8*per*k);
@@ -659,7 +659,7 @@ function rollover(){
   if(S.cold&&S.cold>0) S.cold-=days;
   S.lowStreak = (S.st.full<30||S.st.thirst<30||S.st.hyg<30) ? S.lowStreak+1 : 0;
   if(S.lowStreak>=2&&!S.cold){ S.cold=3; S.lowStreak=0 }
-  S.day=t; S.fuel=maxFuel(); S.flow=0; S.flowReady=false;
+  S.day=t; S.parked=''; S.fuel=maxFuel(); S.flow=0; S.flowReady=false;
   S.hw.today=0; S.hw.tday='';
   var gap=S.lastSeg?dayDiff(S.lastSeg,t):99;
   if(gap>=3&&S.points>0){ if(S.tools&&S.tools.key){ S.tools.key--; if(!S.tools.key) delete S.tools.key; S.log.push(t+' 用备用钥匙打着了火'); } else { S.points=0; S.log.push(t+' 电瓶亏电'); } }
@@ -688,6 +688,7 @@ function qualityShift(focus){
   if(S.flowReady){ s+=2; }
   if(S.buff&&S.buff.ear){ s+=2; S.buff.ear=0 }
   if((S.st.inf||0)>=1) s-=1;
+  if(comfort()>=3) s+=comfortBonus();
   return s;
 }
 function supplyFor(q){
@@ -1048,6 +1049,7 @@ function render(){
     else if(TAB === 'rank') h += renderRank();
     else if(TAB === 'tower') h += renderTower();
     else if(TAB === 'svc') h += renderSvc();
+    else if(TAB === 'city') h += renderCity();
     else h += renderGarage();
   }
   $('app').innerHTML = h;
@@ -1057,7 +1059,7 @@ function render(){
 
 function renderNav(){
   if(!S.veh){ $('nav').innerHTML=''; return }
-  var items=[['drive','上路'],['hw','车间'],['car','仓'],['tower','副'],['rank','榜'],['garage','家']];
+  var items=[['drive','上路'],['hw','车间'],['car','仓'],['tower','副'],['rank','榜'],['garage','家'],['city','城']];
   $('nav').innerHTML=items.map(function(it){
     var cls=(TAB===it[0]?'on':'');
     var dot=(it[0]==='tower'&&towerReady())?'<i class="dot on"></i>':'<i class="dot"></i>';
@@ -2516,7 +2518,8 @@ function segState(kind,ni){
   var sg=SEG[kind], cost=sg.fuel;
   if(kind==='long'&&S.veh==='moto') cost=1;
   var ok=true, why='';
-  if(T){ ok=false; why='计时中' }
+  if(S.parked===dkey()){ ok=false; why='车已入库' }
+  else if(T){ ok=false; why='计时中' }
   else if(S.fuel<cost){ ok=false; why='汽油不够' }
   else if(ni.inClass){ ok=false; why='这节课要听' }
   else if(sg.min>ni.free){ ok=false; why='空档只有 '+dur(ni.free) }
@@ -2924,9 +2927,178 @@ function toolsPanel() {
   });
   return h + '</div>';
 }
+/* ---------- 城：终点站小城（400 km 起就能进） ---------- */
+var CITY_KM = 400;
+var SLOTS = [['desk', '桌上'], ['wall', '墙上'], ['bed', '床边'], ['win', '窗台'], ['floor', '地面']];
+var FSLOT = { desk: 'floor', lamp: 'desk', cup: 'desk', bed: 'floor', audio: 'desk', fridge: 'floor', photo: 'wall', shelf: 'wall' };
+var SLOTN = { desk: '桌上', wall: '墙上', bed: '床边', win: '窗台', floor: '地面' };
+
+function cityOpen() { return S.km >= CITY_KM }
+function cityAtEnd() { return S.km >= TOTAL }
+function comfort() { var n = 0; for (var k in (S.place || {})) if (S.place[k]) n++; return n }
+function comfortBonus() { return cityAtEnd() ? 2 : 1 }
+
+function cityStock() {
+  var d = dkey();
+  if (S.cityDay !== d || !(S.cityList || []).length) {
+    var ks = Object.keys(FURN), out = [];
+    while (out.length < 3 && ks.length) out.push(ks.splice(Math.floor(rnd() * ks.length), 1)[0]);
+    S.cityDay = d; S.cityList = out; save();
+  }
+  return S.cityList;
+}
+
+function citySVG() {
+  var at = cityAtEnd();
+  var h = '<svg viewBox="0 0 360 250" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%">'
+    + '<defs><linearGradient id="csky" x1="0" y1="0" x2="0" y2="1">'
+    + '<stop offset="0" stop-color="#1a1630"/><stop offset=".6" stop-color="#3b2c4a"/><stop offset="1" stop-color="#6b4a44"/></linearGradient>'
+    + '<linearGradient id="cwin" x1="0" y1="0" x2="0" y2="1">'
+    + '<stop offset="0" stop-color="#ffd79a"/><stop offset="1" stop-color="#e08c3c"/></linearGradient></defs>'
+    + '<rect width="360" height="250" fill="url(#csky)"/>'
+    + '<circle cx="300" cy="52" r="17" fill="#f6e7c8" opacity=".9"/>';
+  for (var i = 0; i < 26; i++) {
+    h += '<circle cx="' + ((i * 61 + 13) % 360) + '" cy="' + ((i * 29 + 7) % 120) + '" r="' + (i % 5 === 0 ? 1.1 : 0.6) + '" fill="#fff" opacity=".5"/>';
+  }
+  /* 远处楼群 */
+  var far = [[10, 150, 40, 60], [54, 132, 34, 78], [92, 158, 46, 52], [236, 140, 38, 70], [278, 156, 40, 54], [322, 146, 34, 64]];
+  far.forEach(function (b) {
+    h += '<rect x="' + b[0] + '" y="' + (250 - b[3]) + '" width="' + b[2] + '" height="' + b[3] + '" fill="#241d33" opacity=".85"/>';
+  });
+  /* 近处一排房子：门面 + 窗 */
+  var near = [[20, 200, 54, 50], [86, 186, 62, 64], [230, 178, 70, 72], [312, 196, 40, 54]];
+  near.forEach(function (b, bi) {
+    h += '<rect x="' + b[0] + '" y="' + (250 - b[3]) + '" width="' + b[2] + '" height="' + b[3] + '" fill="#191426"/>';
+    h += '<rect x="' + b[0] + '" y="' + (250 - b[3]) + '" width="' + b[2] + '" height="2.5" fill="#3a2f4d"/>';
+    var cols = Math.max(2, Math.floor(b[2] / 20));
+    for (var w = 0; w < cols; w++) {
+      for (var r = 0; r < 2; r++) {
+        var lit = ((bi * 7 + w * 3 + r * 5) % 4) !== 1;
+        h += '<rect x="' + (b[0] + 8 + w * (b[2] - 12) / cols) + '" y="' + (250 - b[3] + 12 + r * 17) + '" width="7" height="9" rx="1"'
+          + ' fill="' + (lit ? 'url(#cwin)' : '#2a2338') + '" opacity="' + (lit ? .9 : 1) + '"/>';
+      }
+    }
+  });
+  /* 城门：两根柱子 + 横牌 */
+  h += '<rect x="150" y="150" width="8" height="100" fill="#2c2340"/><rect x="212" y="150" width="8" height="100" fill="#2c2340"/>'
+    + '<rect x="143" y="138" width="84" height="22" rx="4" fill="#1d6b5a" stroke="rgba(255,255,255,.35)" stroke-width="1.4"/>'
+    + '<text x="185" y="153" font-size="9" text-anchor="middle" fill="rgba(255,255,255,.9)" font-family="ui-monospace,Consolas,monospace">'
+    + (at ? '终 点 站' : 'K ' + CITY_KM) + '</text>'
+    + '<rect x="164" y="212" width="42" height="38" rx="2" fill="#120e1c"/>'
+    + '<path d="M164,250 L164,232 Q185,214 206,232 L206,250 Z" fill="#1b1526"/>';
+  /* 路 */
+  h += '<rect x="0" y="236" width="360" height="14" fill="#141020"/>'
+    + '<g stroke="#f0b458" stroke-width="2.4" stroke-linecap="round" opacity=".45">'
+    + '<path d="M18,244 h18"/><path d="M62,244 h18"/><path d="M106,244 h18"/><path d="M252,244 h18"/><path d="M296,244 h18"/></g>';
+  h += '</svg>';
+  return h;
+}
+
+function cityHUD() {
+  var nm = cityAtEnd() ? '终 点 站' : '第 一 座 城';
+  return '<div class="hud"><div class="hud row"><span class="hday">' + nm + '</span>'
+    + '<span class="hpill">' + (cityAtEnd() ? '你到了' : 'K ' + Math.round(S.km) + ' / ' + CITY_KM) + '</span></div>'
+    + '<div class="hud row end"><div class="hbig">' + comfort() + '<small>/5</small><em>舒适度</em></div>'
+    + '<div class="gz"><span style="font-size:11px;color:#b9ae9c;line-height:1.6">'
+    + '≥3：掉落品质 +' + comfortBonus() + '<br>5：夜里衰减 ×0.85</span></div></div></div>';
+}
+
+function renderCity() {
+  if (!cityOpen()) {
+    return '<div class="hero">' + citySVG() + cityHUD() + '</div>'
+      + '<div class="panel"><p class="ptitle">还 没 到 城</p>'
+      + '<div class="hint" style="text-align:left">第一座城在 ' + CITY_KM + ' 公里。你现在 ' + S.km.toFixed(1)
+      + ' 公里，还差 ' + (CITY_KM - S.km).toFixed(1) + '。<br>到了那儿可以买家具、装房间、把车停进车库。</div></div>';
+  }
+  var h = '<div class="hero">' + citySVG() + cityHUD() + '</div>';
+
+  /* 家具店 */
+  h += '<div class="panel"><p class="ptitle">家 具 店</p>';
+  cityStock().forEach(function (id) {
+    var f = FURN[id], own = has(id);
+    var p = Math.round(f.p * (cityAtEnd() ? .9 : 1));
+    h += '<div class="item"><div class="n">' + f.n + (own ? ' <small style="opacity:.45">车里已有</small>' : '')
+      + '<div class="dpd">' + f.d + '</div></div>'
+      + (own ? '<div class="c">—</div>'
+        : '<button class="mini' + (S.points >= p ? '' : ' off') + '" ' + (S.points >= p ? 'onclick="A.cityBuy(\'' + id + '\')"' : 'disabled') + '>' + p + ' 点</button>')
+      + '</div>';
+  });
+  h += '<div class="hint" style="text-align:left">每天上三件，明天换。' + (cityAtEnd() ? '到站了，打九折。' : '') + '</div></div>';
+
+  /* 房间 */
+  h += '<div class="panel"><p class="ptitle">房 间</p>';
+  SLOTS.forEach(function (s) {
+    var id = (S.place || {})[s[0]], f = id ? FURN[id] : null;
+    var good = id && FSLOT[id] === s[0];
+    h += '<div class="item" onclick="A.citySlot(\'' + s[0] + '\')" style="cursor:pointer">'
+      + '<div class="n">' + s[1] + ' <small style="opacity:.4">' + (f ? f.n : '空着') + '</small>'
+      + (f ? '<div class="dpd">' + (good ? '位置对，算一分' : '位置不对，换个地方更好') + '</div>' : '')
+      + '</div><div class="c">' + (good ? '✓' : '›') + '</div></div>';
+  });
+  h += '<div class="hint" style="text-align:left">点一个位置，把车里的家具摆上去。每个位置只放一件，摆对位置才算数。</div></div>';
+
+  /* 车库 */
+  var parked = S.parked === dkey();
+  h += '<div class="panel"><p class="ptitle">车 库</p>'
+    + '<div class="hint" style="text-align:left">停进去，今晚状态衰减 ×0.6，明天再来取。停着的时候不能上路。</div>'
+    + '<div class="btns"><button class="big ' + (parked ? 'ghost' : 'primary') + '" onclick="A.cityPark()">'
+    + (parked ? '把车取出来' : '停进去，今天到此为止') + '</button></div></div>';
+
+  return h;
+}
+
+function cityBuy(id) {
+  if (has(id)) return toast('车里已经有了');
+  var p = Math.round(FURN[id].p * (cityAtEnd() ? .9 : 1));
+  if (S.points < p) return toast('点数不够，还差 ' + (p - S.points));
+  S.points -= p; S.furn.push(id); S.furn.sort();
+  save(); snd('coin'); toast('买下「' + FURN[id].n + '」'); render();
+}
+
+function citySlot(slot) {
+  var own = (S.furn || []).slice();
+  var h = '<div class="modal"><h3>' + SLOTN[slot] + '</h3><p style="opacity:.7;font-size:12.5px;line-height:1.7">放什么？摆对位置才算一分。</p>';
+  own.forEach(function (id) {
+    var good = FSLOT[id] === slot;
+    h += '<button class="rule" onclick="A.citySet(\'' + slot + '\',\'' + id + '\')">' + FURN[id].n
+      + '<span style="opacity:.55;font-size:11px"> · ' + FURN[id].d.slice(0, 12) + (good ? ' · 这里合适' : '') + '</span></button>';
+  });
+  if (!own.length) h += '<p style="opacity:.6;font-size:12.5px">还一件家具都没有，先去店里买。</p>';
+  h += '<div class="btns"><button class="big ghost" onclick="A.cityClear(\'' + slot + '\')">空着</button>'
+    + '<button class="big ghost" onclick="A.close()">算了</button></div></div>';
+  modal(h); snd('open');
+}
+
+function citySet(slot, id) {
+  S.place = S.place || {};
+  for (var k in S.place) if (S.place[k] === id) delete S.place[k];
+  S.place[slot] = id;
+  save(); closeModal(); snd('tap'); render();
+}
+
+function cityClear(slot) {
+  S.place = S.place || {};
+  delete S.place[slot];
+  save(); closeModal(); snd('tap'); render();
+}
+
+function cityPark() {
+  if (S.parked === dkey()) {
+    S.parked = ''; save(); snd('tap'); toast('车取出来了，可以走'); return render();
+  }
+  var d = S.days[dkey()];
+  if (!cityAtEnd() && !(d && d.seg >= 1)) return toast('今天还没跑过一段，停什么车');
+  if (T) return toast('计时中，跑完再说');
+  S.parked = dkey(); save(); snd('start');
+  toast('车入库。今晚衰减 ×0.6，明天来取。'); render();
+}
 function renderGarage(){
   var v=VEH[S.veh], L=LV[S.lvl], nx=LV[S.lvl+1], ni=nowInfo();
   var h=roomHTML();
+
+  h+='<div class="panel"><p class="ptitle">城</p>'
+   +'<div class="hint" style="text-align:left">'+(cityOpen()?'买家具、装房间、把车停进车库。':'第一座城在 '+CITY_KM+' 公里，还差 '+(CITY_KM-S.km).toFixed(1)+'。')+'</div>'
+   +'<div class="btns"><button class="big primary" onclick="A.tab(\'city\')">进 城</button></div></div>';
 
   h+='<div class="panel"><p class="ptitle">今 天</p>'
    +'<div class="bars">'+bar('full','饱腹')+bar('thirst','口渴')+bar('nrg','精力')+bar('hyg','卫生')+'</div>'
@@ -3149,7 +3321,7 @@ function sfxToggle(){ S.sfx = sfxOn() ? 0 : 1; save(); render(); snd('tap') }
 A.towerSel=towerSel; A.towerStart=towerStart; A.towerEnter=towerEnter; A.towerCard=towerCard; A.towerRule=towerRule; A.towerNote=towerNote; A.sfxToggle=sfxToggle;
 A.evPick=evPick; A.calm=calm; A.showEv=function(){ if(S.curEv!=null) showEvent(S.curEv) }; A.raw=function(){ return S }; A.maybeEv=maybeEvent; A.evList=function(){ return EVENTS.map(function(e){return e.t}) };
 A.snack=snack; A.trinkets=function(){ return (S.trinkets||[]) }; A.lootPool=function(q){ return POOL[q].map(function(p){return p.k}) };
-A.dunEnter=dunEnter; A.dunChoice=dunChoice; A.dunClose=dunClose; A.stallBuy=stallBuy; A.sell=sell; A.cancelAsk=cancelAsk; A.cancelSeg=cancelSeg; A.toolUse=toolUse; A.toolAdd=toolAdd; A.tools=function(){ return TOOLS };
+A.dunEnter=dunEnter; A.dunChoice=dunChoice; A.dunClose=dunClose; A.stallBuy=stallBuy; A.sell=sell; A.cancelAsk=cancelAsk; A.cancelSeg=cancelSeg; A.toolUse=toolUse; A.cityBuy=cityBuy; A.citySlot=citySlot; A.citySet=citySet; A.cityClear=cityClear; A.cityPark=cityPark; A.toolAdd=toolAdd; A.tools=function(){ return TOOLS };
 
 /* ---------- 启动 ---------- */
 S=load();
