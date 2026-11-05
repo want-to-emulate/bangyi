@@ -391,6 +391,13 @@
 
   @keyframes fly{0%,100%{transform:translate(0,0)}50%{transform:translate(16px,-6px)}}
   .birds{animation:fly 11s ease-in-out infinite}
+
+/* v0.9 随机事件 */
+.cold.inf{border-color:rgba(255,120,90,.45);background:linear-gradient(180deg,rgba(255,110,80,.16),rgba(255,110,80,.06));color:#ffb4a0}
+.modal.ev .evi{font-size:26px;line-height:1;margin-bottom:10px;text-align:center}
+.modal .evi{font-size:22px;line-height:1;margin-bottom:8px;text-align:center}
+.modal .evg{display:inline-block;font-size:11.5px;color:#0b0912;background:var(--amber);
+  border-radius:999px;padding:3px 10px;margin:4px 0 2px;font-weight:700}
 </style>
 
 <link rel="manifest" href="./manifest.webmanifest">
@@ -582,6 +589,7 @@ function roadBonus(){
 }
 function longOK(){
   var d=new Date(), tm=(d.getDay()+1)%7;
+  if((S.st.inf||0)>=2) return false;
   return !((tm===1||tm===2)&&d.getHours()>=21);
 }
 
@@ -629,6 +637,7 @@ function qualityShift(focus){
   if(S.st.thirst<30) s-=1;
   if(S.st.nrg<30) s-=1;
   if(S.flowReady){ s+=2; }
+  if((S.st.inf||0)>=1) s-=1;
   return s;
 }
 function supplyFor(q){
@@ -745,6 +754,7 @@ function setFocus(n){
     if(low) S.pending.low=true;
   }
   if(S.flow>=3&&!S.flowReady) S.flowReady=true;
+  if(maybeEvent(0.35)) { SPEC=null; save(); showLoot(); return }
   SPEC=null; save();
   showLoot();
 }
@@ -808,7 +818,7 @@ function confess(){
   else toast('记下了。感染 '+S.st.inf+'/3');
   save(); render();
 }
-function calm(){ S.st.inf=0; toast('坐了两分钟，感染清零'); save(); render() }
+
 
 /* ---------- 服务区 ---------- */
 function weekKey(){
@@ -1740,6 +1750,7 @@ function towerStart(id){
   toast('进塔了。90 分钟后回来开门。');
 }
 function towerEnter(){
+  if((S.st.inf||0)>=3) return toast('感染满了，塔门不开。先坐两分钟。');
   if(!towerReady()) return toast('还没到塔下');
   var t = TOWER_OF(S.tower.id);
   if(!S.tq || S.tq.id !== t.id){
@@ -1845,6 +1856,151 @@ function towerResolve(lastOk, t){
   modal(h);
 }
 
+/* ---------- 路上的随机事件 ---------- */
+var EVENTS = [
+  { ic: '🚚', t: '抛锚的货车', x: '一辆货车歪在护栏边，司机站在雨里招手，后轮整个塌下去。',
+    o: [
+      { t: '停下来帮他换胎', r: '四十分钟，两只手都是黑的。他说了七次谢谢。', g: '+2 点 · 感染 −1', e: { p: 2, inf: -1 } },
+      { t: '按了一下喇叭，开过去', r: '后视镜里他还在挥手。你从车窗丢下去一桶油，他接住了。', g: '+1 格油', e: { f: 1 } }
+    ] },
+  { ic: '⛔', t: '检查站', x: '前面排了六辆车，栏杆半开着，穿反光背心的人在敲窗。',
+    o: [
+      { t: '老老实实排队', r: '排了二十分钟，什么都没查。', g: '−1 格油', e: { f: -1 } },
+      { t: '从护栏边的土路挤过去', r: '打滑，蹭了一身泥，但省了时间，还捡到个箱子。', g: '+1 个箱子', e: { box: 1 } }
+    ] },
+  { ic: '🌧', t: '暴雨', x: '雨点砸在车顶上像有人在敲，能见度只剩三十米。',
+    o: [
+      { t: '靠边停，等雨小一点', r: '雨刷停了，车里很安静。你听了十分钟雨。', g: '+1 点 · 精力 +10', e: { p: 1, st: { nrg: 10 } } },
+      { t: '硬开', r: '冲出去了。车里进了点水，后备箱里有几瓶接的雨水。', g: '+2 瓶水', e: { item: 'water', itemN: 2 } }
+    ] },
+  { ic: '🎒', t: '搭车的人', x: '一个背包客站在雨里，纸板上写着「往前，随便多远」。',
+    o: [
+      { t: '载他一段', r: '他说他在找一个人。下车时把地址留下了。', g: '+3 点 · 感染 −1 · −1 格油', e: { p: 3, inf: -1, f: -1 } },
+      { t: '没停', r: '纸板在后视镜里变小。路上本来就该一个人走。', g: '什么也没发生', e: {} }
+    ] },
+  { ic: '🐈', t: '加油机底下的猫', x: '一只三花蹲在加油机阴影里，盯着你手里的饼干。',
+    o: [
+      { t: '掰半块给它', r: '它吃完就走了，尾巴扫了一下你的鞋。', g: '感染 −1', e: { inf: -1 } },
+      { t: '自己吃掉', r: '饼干有点干。你还剩一包。', g: '+1 包饼干', e: { item: 'biscuit' } }
+    ] },
+  { ic: '📻', t: '电台', x: '调到 103.7，有人在念听众来信，说到一半信号开始飘。',
+    o: [
+      { t: '停在路边听完', r: '信里说，他也在准备考试，第四年了。', g: '+2 点', e: { p: 2 } },
+      { t: '关掉，睡一会儿', r: '座椅放平，二十分钟，醒的时候天还没黑透。', g: '精力 +15', e: { st: { nrg: 15 } } }
+    ] },
+  { ic: '🏚', t: '废弃的服务区', x: '卷帘门塌了一半，货架还立着，落了很厚一层灰。',
+    o: [
+      { t: '钻进去翻一翻', r: '翻到点东西，手上全是灰。', g: '+1 个箱子', e: { box: 1 } },
+      { t: '不停，趁天亮多跑一段', r: '前面路况很好，油箱还满着。', g: '+1 格油', e: { f: 1 } }
+    ] },
+  { ic: '🛞', t: '爆胎', x: '右后胎扁了。国道边上只有风，和很远的一声喇叭。',
+    o: [
+      { t: '自己换', r: '千斤顶滑了两次，换完手上破了个口子。', g: '−1 格油 · +1 点', e: { f: -1, p: 1 } },
+      { t: '硬撑到服务区', r: '轮毂磨出一路火星，但撑到了。', g: '感染 +1 · +2 点', e: { inf: 1, p: 2 } }
+    ] },
+  { ic: '🌫', t: '雾', x: '雾从地面升起来，前车尾灯忽远忽近，像在等人。',
+    o: [
+      { t: '跟着它开', r: '跟了很远，最后它拐进一条岔路，你捡到个箱子。', g: '+1 个箱子 · 感染 +1', e: { box: 1, inf: 1 } },
+      { t: '靠边，等雾散', r: '等了半小时，雾散的时候路很干净。', g: '+1 点', e: { p: 1 } }
+    ] },
+  { ic: '📷', t: '一张湿照片', x: '路肩上有一张泡了水的照片，背面写着字，看不清了。',
+    o: [
+      { t: '捡起来夹进书里', r: '你不认识照片里的人，但还是把它晾在仪表台上。', g: '感染 −1 · +1 点', e: { inf: -1, p: 1 } },
+      { t: '不碰', r: '有些东西不该带着走。', g: '什么也没发生', e: {} }
+    ] },
+  { ic: '🕯', t: '远处的灯', x: '路边有一盏灯，不是加油站，也不像住户，就是亮着。',
+    o: [
+      { t: '拐过去看看', r: '一间空屋，桌上有个箱子，还热着。', g: '+1 个箱子 · 感染 +1', e: { box: 1, inf: 1 } },
+      { t: '开过去', r: '灯在后视镜里越来越小，最后灭了。', g: '+1 点', e: { p: 1 } }
+    ] },
+  { ic: '🚐', t: '同款的车', x: '一辆和你一样的面包车并行，司机摇下车窗朝你点头。',
+    o: [
+      { t: '跟着他开一段', r: '他熟路，带你绕开了一段修路。', g: '+1 格油 · +1 点', e: { f: 1, p: 1 } },
+      { t: '超过去', r: '你先到的下一个路口。', g: '+2 点', e: { p: 2 } }
+    ] }
+];
+
+function evApply(e){
+  if(!e) return;
+  if(e.p) S.points = Math.max(0, S.points + e.p);
+  if(e.f) S.fuel = clamp(S.fuel + e.f, 0, maxFuel());
+  if(e.inf) S.st.inf = clamp((S.st.inf || 0) + e.inf, 0, 3);
+  if(e.box) S.boxes = (S.boxes || 0) + e.box;
+  if(e.item) S.inv[e.item] = (S.inv[e.item] || 0) + (e.itemN || 1);
+  if(e.st) for(var k in e.st) step(k, e.st[k]);
+}
+
+function pickEv(){
+  var pool = [];
+  for(var i = 0; i < EVENTS.length; i++) if(i !== S.lastEv) pool.push(i);
+  return pool[Math.floor(rnd() * pool.length)];
+}
+
+function maybeEvent(p){
+  if(S.curEv != null) return false;
+  if(rnd() < p){ S.curEv = pickEv(); return true }
+  return false;
+}
+
+function showEvent(idx){
+  var ev = EVENTS[idx]; if(!ev) return;
+  var h = '<div class="modal ev"><div class="evi">' + ev.ic + '</div><h3>' + ev.t + '</h3>'
+    + '<p style="line-height:1.9">' + ev.x + '</p>';
+  ev.o.forEach(function(o, i){
+    h += '<button class="rule" onclick="A.evPick(' + i + ')">' + o.t + '</button>';
+  });
+  h += '</div>';
+  modal(h);
+  snd('open');
+}
+
+function evPick(i){
+  var idx = S.curEv, ev = EVENTS[idx];
+  if(!ev) return;
+  var o = ev.o[i]; if(!o) return;
+  evApply(o.e || {});
+  S.lastEv = idx;
+  S.curEv = null;
+  save();
+  snd(o.e && o.e.inf > 0 ? 'err' : 'coin');
+  var h = '<div class="modal win"><div class="evi">' + ev.ic + '</div><h3>' + ev.t + '</h3>'
+    + '<p style="line-height:1.9">' + o.r + '</p>'
+    + (o.g ? '<p class="evg">' + o.g + '</p>' : '')
+    + '<div class="btns"><button class="big primary" onclick="A.close()">继续</button></div></div>';
+  modal(h);
+}
+
+/* ---------- 静坐：两分钟，感染 −1，一天一次 ---------- */
+function calmLeft(){
+  if(!S.calmAt) return 0;
+  var l = 120000 - (Date.now() - S.calmAt);
+  return l > 0 ? Math.ceil(l / 1000) : 0;
+}
+function calm(){
+  var t = dkey();
+  if(S.calmDay === t) return toast('今天已经坐过了');
+  if(!S.calmAt){
+    S.calmAt = Date.now();
+    save(); render();
+    toast('坐下。两分钟后回来点结束。');
+    return;
+  }
+  var left = calmLeft();
+  if(left > 0) return toast('还差 ' + Math.floor(left / 60) + ' 分 ' + (left % 60) + ' 秒');
+  S.calmAt = 0;
+  S.calmDay = t;
+  S.st.inf = Math.max(0, (S.st.inf || 0) - 1);
+  save(); render();
+  snd('open');
+  toast(S.st.inf > 0 ? ('坐完了。感染 ' + S.st.inf + '/3') : '坐完了。感染清零');
+}
+function calmLbl(){
+  if(S.calmDay === dkey()) return '坐过了';
+  var l = calmLeft();
+  if(S.calmAt && l > 0) return '结束 ' + Math.floor(l / 60) + ':' + pad(l % 60);
+  return '静坐';
+}
+
 function bar(k,label){
   var v=Math.round(S.st[k]);
   var cls=v<30?'low':(v<60?'mid':'');
@@ -1862,7 +2018,8 @@ function segState(kind,ni){
   else if(ni.inClass){ ok=false; why='这节课要听' }
   else if(sg.min>ni.free){ ok=false; why='空档只有 '+dur(ni.free) }
   else if(kind==='long'){
-    if(!longOK()){ ok=false; why='明天有早八' }
+    if((S.st.inf||0)>=2){ ok=false; why='感染太重' }
+    else if(!longOK()){ ok=false; why='明天有早八' }
     else if(S.cold){ ok=false; why='感冒中' }
     else if(S.st.full<30){ ok=false; why='太饿了' }
     else if(S.st.thirst<30){ ok=false; why='太渴了' }
@@ -1917,6 +2074,10 @@ function renderDrive(){
   if(T) return driveTiming();
   var h=heroHTML();
   if(S.cold) h+='<div class="cold">感冒中 · 禁长途 · 里程 ×0.85<span style="margin-left:auto"><button class="mini" onclick="A.med()">吃药</button></span></div>';
+  if((S.st.inf||0)>0){
+    var e1=[ '', '掉落品质 −1', '禁长途', '点数减半 · 塔门不开' ][S.st.inf] || '';
+    h+='<div class="cold inf">感染 '+S.st.inf+'/3 · '+e1+'<span style="margin-left:auto"><button class="mini" onclick="A.calm()">'+calmLbl()+'</button></span></div>';
+  }
   h+='<div class="dock">'
    +'<div class="dline">'+gapTxt(ni)+'</div>'
    +'<div class="acts">'+actBtn('short',ni)+actBtn('std',ni)+actBtn('long',ni)+'</div>'
@@ -1926,6 +2087,7 @@ function renderDrive(){
    +toolBtn(IC.shower,'洗澡','A.wash()')
    +toolBtn(IC.moon,'睡觉','A.sleep()')
    +toolBtn(IC.eye,'想学没学','A.confess()')
+   +(S.st.inf>0?toolBtn(IC.eye,calmLbl(),'A.calm()'):'')
    +'</div>'
    +'<div class=\"stat\">'+S.fuel+'/'+maxFuel()+' 格油 · '+S.points+' 点'+(S.streak>1?' · 连续 '+S.streak+' 段':'')+'</div>'
    +'</div>';
@@ -2136,6 +2298,7 @@ function modal(html,cb){
 }
 function closeModal(){
   var m=$('mask'); if(m&&m.parentNode) m.parentNode.removeChild(m);
+  if(S.curEv!=null && S.curEv!==undefined){ showEvent(S.curEv); return }
   render();
 }
 function toast(m){
@@ -2263,6 +2426,7 @@ window.A={
 
 function sfxToggle(){ S.sfx = sfxOn() ? 0 : 1; save(); render(); snd('tap') }
 A.towerSel=towerSel; A.towerStart=towerStart; A.towerEnter=towerEnter; A.towerCard=towerCard; A.towerRule=towerRule; A.towerNote=towerNote; A.sfxToggle=sfxToggle;
+A.evPick=evPick; A.calm=calm; A.showEv=function(){ if(S.curEv!=null) showEvent(S.curEv) }; A.raw=function(){ return S };
 
 /* ---------- 启动 ---------- */
 S=load();
