@@ -1525,6 +1525,35 @@ function towerReady(){
   var w = towerWin(); if(!w || !w.ready0) return false;
   return Date.now() >= w.end && S.km > w.km0;
 }
+/* ---------- 这一周的账：塔里第一关用它出题 ---------- */
+function weekStats(){
+  var now = new Date(), dow = (now.getDay() + 6) % 7;
+  var mon = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow);
+  var seg = 0, km = 0, miss = 0, worst = null, days = 0;
+  for(var i = 0; i < 7; i++){
+    var d = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + i);
+    if(d > now) break;
+    days++;
+    var rec = (S.days && S.days[dkey(d)]) || {seg: 0, km: 0};
+    seg += rec.seg; km += rec.km;
+    if(rec.seg === 0 && i < dow) miss++;
+    if(rec.seg > 0 && (!worst || rec.seg < worst.seg)) worst = {wk: WK[d.getDay()], seg: rec.seg, km: rec.km};
+  }
+  var low = (S.focusLog || []).filter(function(x){ return x <= 2 }).length;
+  return {seg: seg, km: Math.round(km * 10) / 10, miss: miss, low: low, worst: worst, days: days};
+}
+function towerCards(){
+  var w = weekStats(), out = [];
+  if(w.worst && w.seg > 0 && w.worst.seg <= 2)
+    out.push({t: '周' + w.worst.wk + ' 只有 ' + w.worst.seg + ' 段', d: '这周最短的一天，' + w.worst.km.toFixed(1) + ' 公里'});
+  if(w.miss > 0)
+    out.push({t: '有 ' + w.miss + ' 天一次都没打开', d: '这周已经过了 ' + w.days + ' 天'});
+  if(w.low >= 2)
+    out.push({t: '有 ' + w.low + ' 段专注度只有 1–2', d: '跑完了，但人没在里面'});
+  out.push({t: '没什么可改的，就这样保持', d: '这周 ' + w.seg + ' 段 · ' + w.km.toFixed(1) + ' 公里'});
+  return out.slice(0, 4);
+}
+
 function towerQuiz(t, n){
   var pool = t.quiz.slice(), out = [];
   while(out.length < n && pool.length) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
@@ -1662,7 +1691,7 @@ function renderTower(){
     h += '<p class="ptitle">空 了</p><div class="hint" style="text-align:left;font-size:12px;line-height:1.7">这座塔已经空了。规则你记住了，剩下的靠每天那段路。</div>';
   } else if(inTower){
     h += '<p class="ptitle">还 在 里 面</p>'
-     + '<div class="hint" style="text-align:left;font-size:12px;line-height:1.7">第 ' + (S.tq.step + 1) + ' 关，错了 ' + S.tq.wrong + ' 次。<br>三道关里最多错一次。</div>'
+     + '<div class="hint" style="text-align:left;font-size:12px;line-height:1.7">第 ' + (S.tq.step + 1) + ' 关，错了 ' + S.tq.wrong + ' 次。<br>三道关：账本 → 假规矩 → 一句话。</div>'
      + '<div class="btns"><button class="big primary" onclick="A.towerEnter()">接着过</button></div>';
   } else if(w && w.id === sel && !rd){
     var left = Math.max(0, Math.round((w.end - Date.now()) / 60000));
@@ -1671,7 +1700,11 @@ function renderTower(){
      + '这段 90 分钟还没跑完' + (left ? '，还有 ' + left + ' 分钟' : '，去把它结算了') + '。<br>跑完记得问自己一句：这段真的进去了吗。</div>';
   } else if(rd){
     h += '<p class="ptitle">塔 门</p>'
-     + '<div class="hint" style="text-align:left;font-size:12px;line-height:1.7">门开了。三道关：<br>一条假规矩，两道守塔人的问。<br>最多错一次，错两次门就关。</div>'
+     + '<div class="hint" style="text-align:left;font-size:12px;line-height:1.7">门开了。三道关：<br>'
+     + '① 账本——照这周的真实数据，选一件最该改的<br>'
+     + '② 假规矩——三条里有一条是假的<br>'
+     + '③ 一句话——写给下周的自己<br>'
+     + '只有第 ② 关判对错，错两次门才关。</div>'
      + '<div class="btns"><button class="big primary" onclick="A.towerEnter()">推门进去</button></div>';
   } else {
     h += '<p class="ptitle">进 塔</p>'
@@ -1680,8 +1713,14 @@ function renderTower(){
   }
   h += '</div>';
 
+  if(S.towerNote && S.towerNote.txt){
+    h += '<div class="panel"><p class="ptitle">上 次 你 说</p>'
+     + '<div style="text-align:left;font-size:13px;line-height:1.8;color:#f3ecff">「' + S.towerNote.txt + '」</div>'
+     + '<div class="hint" style="text-align:left;font-size:11px;line-height:1.7;margin-top:6px">' + S.towerNote.at + ' 写的。做到了吗？</div></div>';
+  }
+
   h += '<div class="panel"><p class="ptitle">这 四 座 塔</p>'
-   + '<div class="hint" style="text-align:left;font-size:11.5px;line-height:1.8">四座塔各对应一门要考的东西，形状不一样，问题也不一样。<br>通一座，给一件改装件、感染退一格。同一座塔只能通一次。</div></div>';
+   + '<div class="hint" style="text-align:left;font-size:11.5px;line-height:1.8">四座塔各对应一门要考的东西，形状不一样，第一关的账也不一样。<br>通一座，给一件改装件、感染退一格。同一座塔只能通一次。</div></div>';
   return h;
 }
 function towerSel(id){ S.towerSel = id; save(); render() }
@@ -1704,56 +1743,77 @@ function towerEnter(){
   if(!towerReady()) return toast('还没到塔下');
   var t = TOWER_OF(S.tower.id);
   if(!S.tq || S.tq.id !== t.id){
-    S.tq = {id: t.id, step: 0, wrong: 0, qs: towerQuiz(t, 2)};
+    S.tq = {id: t.id, step: 0, wrong: 0, cards: towerCards(), pick: null};
     save();
   }
   towerStep();
 }
 function towerStep(){
   var q = S.tq; if(!q) return;
-  var t = TOWER_OF(q.id);
+  var t = TOWER_OF(q.id), w = weekStats();
   var h = '<div class="modal"><h3>' + t.n + '</h3>'
    + '<p class="tprog">第 ' + (q.step + 1) + ' / 3 关 · 已错 ' + q.wrong + ' 次</p>';
   if(q.step === 0){
+    h += '<p style="font-size:12.5px;line-height:1.9">这周你已经跑了 <b>' + w.seg + '</b> 段 · <b>' + w.km.toFixed(1) + '</b> 公里。'
+     + (w.miss ? '有 <b>' + w.miss + '</b> 天没打开。' : '每天都打开了。') + '</p>'
+     + '<p>哪一件最该改？</p>';
+    (q.cards || []).forEach(function(cd, i){
+      h += '<button class="rule" onclick="A.towerCard(' + i + ')">'
+       + '<b style="display:block;font-size:13px;color:#f3ecff;margin-bottom:3px">' + cd.t + '</b>'
+       + '<span style="font-size:11px;color:#8d84a8">' + cd.d + '</span></button>';
+    });
+  } else if(q.step === 1){
     h += '<p>只有一条是假的。指出它，门就开。</p>';
     t.rules.forEach(function(r, i){
-      h += '<button class="rule" onclick="A.towerPick(' + i + ')">' + r + '</button>';
+      h += '<button class="rule" onclick="A.towerRule(' + i + ')">' + r + '</button>';
     });
   } else {
-    var qq = q.qs[q.step - 1];
-    h += '<p>' + qq.q + '</p>';
-    qq.o.forEach(function(o, i){
-      h += '<button class="rule" onclick="A.towerAns(' + i + ')">' + o + '</button>';
-    });
+    h += '<p>最后一句。写给下周的自己。</p>'
+     + '<textarea id="tn2" maxlength="60" rows="3" placeholder="比如：周三那天先跑一段再回消息" '
+     + 'style="width:100%;box-sizing:border-box;background:#12101c;border:1px solid #2e2842;border-radius:12px;'
+     + 'color:#f3ecff;padding:10px;font-size:13px;line-height:1.6;resize:none;font-family:inherit"></textarea>'
+     + '<div class="btns"><button class="big primary" onclick="A.towerNote()">就是这句</button></div>';
   }
   h += '</div>';
   modal(h);
 }
-function towerPick(i){
+function towerCard(i){
+  var q = S.tq; if(!q) return;
+  var cd = (q.cards || [])[i]; if(!cd) return;
+  q.pick = cd.t;
+  q.step = 1;
+  save();
+  snd('open');
+  towerStep();
+}
+function towerRule(i){
   var q = S.tq; if(!q) return;
   var t = TOWER_OF(q.id);
   var ok = (i === t.fake);
-  if(!ok) q.wrong++;
-  q.step++;
-  if(ok) snd('open'); else snd('err');
+  if(!ok){
+    q.wrong++;
+    save();
+    snd('err');
+    return towerResolve(false, t);
+  }
+  q.step = 2;
   save();
-  if(q.step > 2) return towerResolve(ok, t);
+  snd('open');
   towerStep();
 }
-function towerAns(i){
+function towerNote(){
   var q = S.tq; if(!q) return;
-  var qq = q.qs[q.step - 1];
-  var ok = (i === qq.a);
-  if(!ok) q.wrong++;
-  q.step++;
-  if(ok) snd('coin'); else snd('err');
+  var el = document.getElementById('tn2');
+  var txt = el && el.value ? el.value.replace(/\s+/g, ' ').trim() : '';
+  if(!txt) return toast('写一句，随便写');
+  S.towerNote = {txt: txt.slice(0, 60), at: dkey()};
   save();
-  if(q.step > 2) return towerResolve(ok, TOWER_OF(q.id));
-  towerStep();
+  snd('coin');
+  towerResolve(true, TOWER_OF(q.id));
 }
 function towerResolve(lastOk, t){
   var q = S.tq, wrong = q ? q.wrong : 3;
-  var pass = wrong <= 1;
+  var pass = wrong === 0;
   S.tower = null;
   S.tq = null;
   var h = '';
@@ -1768,7 +1828,7 @@ function towerResolve(lastOk, t){
     h = '<div class="modal win"><h3>门 开 了</h3>'
      + '<p>假的是：「' + t.rules[t.fake] + '」</p>'
      + '<p style="color:var(--dim);font-size:12px;line-height:1.7">' + t.why + '</p>'
-     + '<p>' + (wrong === 0 ? '三关全对。' : '错了一次，但也算过了。') + '</p>'
+     + '<p>' + '账、规矩、那句话，都过了。' + '</p>'
      + '<p>+1 改装件 · +' + pts + ' 点 · 感染退一格</p>'
      + '<div class="btns"><button class="big primary" onclick="A.close()">出去</button></div></div>';
   } else {
@@ -2202,7 +2262,7 @@ window.A={
 };
 
 function sfxToggle(){ S.sfx = sfxOn() ? 0 : 1; save(); render(); snd('tap') }
-A.towerSel=towerSel; A.towerStart=towerStart; A.towerEnter=towerEnter; A.towerPick=towerPick; A.towerAns=towerAns; A.sfxToggle=sfxToggle;
+A.towerSel=towerSel; A.towerStart=towerStart; A.towerEnter=towerEnter; A.towerCard=towerCard; A.towerRule=towerRule; A.towerNote=towerNote; A.sfxToggle=sfxToggle;
 
 /* ---------- 启动 ---------- */
 S=load();
