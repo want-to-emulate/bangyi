@@ -357,6 +357,40 @@
     font-family:inherit;font-size:13.5px;line-height:1.55;letter-spacing:.02em}
   .rule:active{background:rgba(255,176,58,.16);border-color:rgba(255,176,58,.5)}
   .dot.on{background:var(--amber);box-shadow:0 0 0 3px rgba(255,176,58,.22)}
+
+  /* ---------- v0.7：声音开关、动画、歇业态 ---------- */
+  .hdr{display:flex;gap:6px}
+  .gear.snd{font-family:var(--mono);font-size:13px;padding:4px 9px;line-height:1;letter-spacing:0}
+  .gear.snd.off{opacity:.4;text-decoration:line-through}
+  .dim{opacity:.42}
+  .panel.closed{border-color:rgba(255,111,97,.22);background:linear-gradient(180deg,#151017,#0d0b11)}
+
+  @keyframes pin{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+  .hero{animation:pin .32s ease both}
+  .panel{animation:pin .3s ease both}
+  .panel:nth-of-type(2){animation-delay:.05s}
+  .panel:nth-of-type(3){animation-delay:.09s}
+  .panel:nth-of-type(4){animation-delay:.13s}
+
+  button{transition:transform .07s ease,filter .12s ease}
+  button:active{transform:scale(.975)}
+  .big:active{filter:brightness(1.12)}
+  .act:active{filter:brightness(1.1)}
+
+  @keyframes pop{0%{transform:scale(.94);opacity:0}100%{transform:scale(1);opacity:1}}
+  .modal{animation:pop .22s ease both}
+
+  .tprog{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--amber);margin:-2px 0 12px}
+  .modal.win{border-color:rgba(255,176,58,.55);
+    box-shadow:0 0 0 1px rgba(255,176,58,.2),0 18px 60px rgba(255,150,40,.18)}
+  .modal.win h3{color:var(--amber)}
+
+  .tcard{transition:border-color .15s ease,background .15s ease,transform .1s ease}
+  .tcard:active{transform:scale(.985)}
+  .fcard{transition:opacity .15s ease}
+
+  @keyframes fly{0%,100%{transform:translate(0,0)}50%{transform:translate(16px,-6px)}}
+  .birds{animation:fly 11s ease-in-out infinite}
 </style>
 
 <link rel="manifest" href="./manifest.webmanifest">
@@ -926,20 +960,23 @@ function tab(t){ TAB=t; render() }
 
 function render(){
   if(S.veh) rollover();
-  var h='';
-  if(!S.veh){ h=renderChoose(); }
+  var h = '';
+  if(!S.veh){ h = renderChoose(); }
   else {
-    h+='<div class="hd"><div class="brand">榜 一</div><button class="gear" onclick="A.setup()">设置</button></div>';
-    if(TAB==='drive') h+=renderDrive();
-    else if(TAB==='hw') h+=renderHw();
-    else if(TAB==='car') h+=renderCar();
-    else if(TAB==='rank') h+=renderRank();
-    else if(TAB==='tower') h+=renderTower();
-    else if(TAB==='svc') h+=renderSvc();
-    else h+=renderGarage();
+    h += '<div class="hd"><div class="brand">榜 一</div><div class="hdr">'
+      + '<button class="gear snd' + (sfxOn() ? '' : ' off') + '" onclick="A.sfxToggle()">' + (sfxOn() ? '♪' : '♪') + '</button>'
+      + '<button class="gear" onclick="A.setup()">设置</button></div></div>';
+    if(TAB === 'drive') h += renderDrive();
+    else if(TAB === 'hw') h += renderHw();
+    else if(TAB === 'car') h += renderCar();
+    else if(TAB === 'rank') h += renderRank();
+    else if(TAB === 'tower') h += renderTower();
+    else if(TAB === 'svc') h += renderSvc();
+    else h += renderGarage();
   }
-  $('app').innerHTML=h;
+  $('app').innerHTML = h;
   renderNav();
+  if(typeof paintIn === 'function') paintIn();
 }
 
 function renderNav(){
@@ -1086,9 +1123,16 @@ function sceneSVG(){
   var sign='<g opacity="'+(ph==='night'?.8:.75)+'">'
     +'<rect x="86" y="160" width="2.6" height="46" fill="rgba(0,0,0,.55)"/>'
     +'<rect x="74" y="146" width="40" height="20" rx="3" fill="#1f6b5a" stroke="rgba(255,255,255,.28)" stroke-width="1.2"/>'
-    +'<rect x="80" y="153" width="20" height="2.4" rx="1.2" fill="rgba(255,255,255,.55)"/>'
-    +'<rect x="80" y="158" width="14" height="2.4" rx="1.2" fill="rgba(255,255,255,.35)"/>'
+    +'<text x="94" y="162" font-size="7.5" text-anchor="middle" fill="rgba(255,255,255,.88)" font-family="ui-monospace,Consolas,monospace">K'+Math.round(S.km)+'</text>'
     +'</g>';
+  var birds='';
+  if(ph==='day'||ph==='dawn'){
+    birds='<g class="birds" opacity=".55">'
+      +'<path d="M60,96 q4,-4 8,0 q4,-4 8,0" stroke="#1b2430" stroke-width="1.4" fill="none"/>'
+      +'<path d="M88,84 q3.4,-3.4 6.8,0 q3.4,-3.4 6.8,0" stroke="#1b2430" stroke-width="1.2" fill="none"/>'
+      +'<path d="M44,110 q3,-3 6,0 q3,-3 6,0" stroke="#1b2430" stroke-width="1.1" fill="none"/>'
+      +'</g>';
+  }
   var beam=(ph==='night'||ph==='dusk')
     ? '<path d="M232,242 L360,212 L360,280 L232,272 Z" fill="url(#beam)" opacity=".26"/>':'';
   var grass='<path d="M0,340 L0,318 Q14,326 24,314 Q34,326 46,318 L46,340 Z" fill="rgba(0,0,0,.35)"/>'
@@ -1101,11 +1145,13 @@ function sceneSVG(){
    +'<radialGradient id="glow"><stop offset="0" stop-color="'+P.sun+'" stop-opacity="'+(P.glow*2.4).toFixed(2)+'"/><stop offset=".55" stop-color="'+P.sun+'" stop-opacity="'+(P.glow*0.7).toFixed(2)+'"/><stop offset="1" stop-color="'+P.sun+'" stop-opacity="0"/></radialGradient>'
    +'<linearGradient id="tf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".38"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>'
    +'<linearGradient id="bf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".55"/></linearGradient>'
+   +'<radialGradient id="vig" cx=".5" cy=".5" r=".78"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".42"/></radialGradient>'
    +'</defs>'
    +'<rect width="360" height="340" fill="url(#sky)"/>'
    +stars+sun
    +'<g transform="translate(0,79)"><path d="'+RIDGE[zi]+'" fill="rgba(0,0,0,'+(ph==='day'?'.26':'.40')+')"/></g>'
    +'<rect x="0" y="158" width="360" height="48" fill="url(#hz)"/>'
+   +birds
    +pole+sign
    +'<rect x="0" y="205" width="360" height="135" fill="'+roadc+'"/>'
    +'<rect x="0" y="204" width="360" height="2" fill="rgba(255,255,255,.10)"/>'
@@ -1117,6 +1163,7 @@ function sceneSVG(){
    +grass
    +'<rect x="0" y="0" width="360" height="110" fill="url(#tf)"/>'
    +'<rect x="0" y="230" width="360" height="110" fill="url(#bf)"/>'
+   +'<rect x="0" y="0" width="360" height="340" fill="url(#vig)"/>'
    +'</svg>';
 }
 function gauge(k,label){
@@ -1251,8 +1298,70 @@ function mapHTML(){
   return '<div class="mapwrap">'+out+'</div>';
 }
 
-/* ---------- 服务区：一个真的地方 ---------- */
-function stationSVG(){
+/* ---------- 声音：全部合成，没有音频文件 ---------- */
+var _AC = null;
+function sfxOn(){ return !!(S && S.sfx !== 0) }
+function _ac(){
+  if(!_AC){
+    var C = window.AudioContext || window.webkitAudioContext;
+    if(!C) return null;
+    try { _AC = new C() } catch(e){ return null }
+  }
+  if(_AC.state === 'suspended'){ try{ _AC.resume() }catch(e){} }
+  return _AC;
+}
+function _tone(f, dur, type, vol, delay, to){
+  var a = _ac(); if(!a) return;
+  var t = a.currentTime + (delay || 0);
+  var o = a.createOscillator(), g = a.createGain();
+  o.type = type || 'sine';
+  o.frequency.setValueAtTime(f, t);
+  if(to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol || .05, t + .012);
+  g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g); g.connect(a.destination);
+  o.start(t); o.stop(t + dur + .03);
+}
+function _noise(dur, vol, freq){
+  var a = _ac(); if(!a) return;
+  var n = Math.max(1, Math.floor(a.sampleRate * dur));
+  var b = a.createBuffer(1, n, a.sampleRate), d = b.getChannelData(0);
+  for(var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+  var s = a.createBufferSource(); s.buffer = b;
+  var f = a.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq || 1600; f.Q.value = .8;
+  var g = a.createGain(); g.gain.value = vol || .05;
+  s.connect(f); f.connect(g); g.connect(a.destination);
+  s.start();
+}
+function snd(kind){
+  if(!sfxOn()) return;
+  switch(kind){
+    case 'tap':    _tone(600, .04, 'triangle', .030); break;
+    case 'open':   _tone(520, .07, 'sine', .055); _tone(780, .09, 'sine', .045, .055); break;
+    case 'coin':   _tone(940, .055, 'square', .030); _tone(1410, .09, 'square', .026, .05); break;
+    case 'start':  _tone(330, .14, 'sine', .050, 0, 470); break;
+    case 'finish': _tone(523, .13, 'triangle', .050); _tone(784, .19, 'triangle', .042, .1); break;
+    case 'win':    [523, 659, 784, 1046].forEach(function(f, i){ _tone(f, .22, 'triangle', .050, i * .085) }); break;
+    case 'fail':   _tone(320, .15, 'sawtooth', .038, 0, 190); _tone(160, .3, 'sawtooth', .032, .13); break;
+    case 'err':    _tone(170, .1, 'square', .038); break;
+    case 'box':    _noise(.16, .045, 2200); _tone(680, .11, 'sine', .045, .05); break;
+    case 'level':  [392, 523, 659, 880, 1046].forEach(function(f, i){ _tone(f, .26, 'sine', .045, i * .1) }); break;
+  }
+}
+/* 任何按钮都有一点回弹声；逻辑里再叠具体音效 */
+if(typeof document !== 'undefined' && document.addEventListener){
+  document.addEventListener('click', function(e){
+    var t = e.target;
+    if(!t || !t.closest) return;
+    var b = t.closest('button');
+    if(b && !b.disabled) snd('tap');
+  }, true);
+}
+
+/* ---------- 服务区：一个真的地方（平时也能进，只是不开张） ---------- */
+function stationSVG(open){
+  var dim = open ? 1 : 0.42;
   var s='<svg viewBox="0 0 360 210" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%">'
    +'<defs>'
    +'<linearGradient id="ssky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d1526"/><stop offset="1" stop-color="#26313f"/></linearGradient>'
@@ -1273,244 +1382,404 @@ function stationSVG(){
    +'<rect x="40" y="86" width="7" height="66" fill="#242a34"/>'
    +'<rect x="313" y="86" width="7" height="66" fill="#242a34"/>'
    +'<rect x="40" y="86" width="280" height="4" fill="#3a4150" opacity=".8"/>';
-  /* 两盏灯 */
+  /* 两盏灯：关张时只留一点余光 */
   [104,196].forEach(function(x){
     s+='<rect x="'+(x-1)+'" y="88" width="2" height="10" fill="#3a4150"/>'
      +'<path d="M'+(x-9)+',98 L'+(x+9)+',98 L'+(x+6)+',105 L'+(x-6)+',105 Z" fill="#4a5162"/>'
-     +'<ellipse cx="'+x+'" cy="108" rx="9" ry="4" fill="#ffd79a" opacity=".85"/>'
-     +'<ellipse cx="'+x+'" cy="150" rx="26" ry="7" fill="#ffd79a" opacity=".10"/>'
-     +'<ellipse cx="'+x+'" cy="128" rx="22" ry="26" fill="url(#sglow)" opacity=".55"/>';
+     +'<ellipse cx="'+x+'" cy="108" rx="9" ry="4" fill="#ffd79a" opacity="'+(0.85*dim).toFixed(2)+'"/>'
+     +'<ellipse cx="'+x+'" cy="150" rx="26" ry="7" fill="#ffd79a" opacity="'+(0.10*dim).toFixed(2)+'"/>'
+     +'<ellipse cx="'+x+'" cy="128" rx="22" ry="26" fill="url(#sglow)" opacity="'+(0.55*dim).toFixed(2)+'"/>';
   });
-  /* 小店 */
+  /* 小店：关张时窗户是暗的 */
   s+='<rect x="214" y="96" width="104" height="54" rx="4" fill="#232a35"/>'
    +'<rect x="214" y="96" width="104" height="5" rx="2" fill="#39424f"/>'
-   +'<rect x="224" y="110" width="46" height="28" rx="2" fill="#ffd89f" opacity=".92"/>'
+   +'<rect x="224" y="110" width="46" height="28" rx="2" fill="'+(open?'#ffd89f':'#2a2f39')+'" opacity=".92"/>'
    +'<rect x="224" y="110" width="46" height="28" rx="2" fill="none" stroke="#8a6a3a" stroke-width="1.4"/>'
    +'<path d="M247,110 v28 M224,124 h46" stroke="#8a6a3a" stroke-width="1.4"/>'
    +'<rect x="282" y="118" width="24" height="32" rx="2" fill="#2f3743"/>'
    +'<circle cx="302" cy="134" r="1.6" fill="#9aa3b2"/>'
    +'<rect x="224" y="100" width="46" height="6" rx="2" fill="#3a4150"/>'
-   +'<rect x="228" y="102" width="20" height="2" rx="1" fill="#ffcf8a" opacity=".8"/>';
+   +'<rect x="228" y="102" width="20" height="2" rx="1" fill="#ffcf8a" opacity="'+(open?'.8':'.18')+'"/>';
+  /* 营业牌 */
+  s+='<rect x="279" y="98" width="34" height="13" rx="2" fill="'+(open?'#3d6b4f':'#3a2f2f')+'"/>'
+   +'<text x="296" y="107.5" font-size="7.5" text-anchor="middle" fill="'+(open?'#a9f0c2':'#c08f8f')+'" font-family="sans-serif">'+(open?'营业中':'未营业')+'</text>';
   /* 加油机 */
   s+='<rect x="70" y="112" width="26" height="38" rx="3" fill="#39424f"/>'
-   +'<rect x="74" y="118" width="18" height="10" rx="1.5" fill="#ffcf8a" opacity=".9"/>'
+   +'<rect x="74" y="118" width="18" height="10" rx="1.5" fill="#ffcf8a" opacity="'+(open?'.9':'.25')+'"/>'
    +'<rect x="74" y="132" width="18" height="3" rx="1.5" fill="#5b6474"/>'
    +'<rect x="74" y="138" width="12" height="3" rx="1.5" fill="#5b6474"/>'
    +'<path d="M96,120 q10,4 8,16 q-1,8 6,10" stroke="#5b6474" stroke-width="2.4" fill="none"/>'
    +'<rect x="66" y="150" width="34" height="6" rx="2" fill="#2a303a"/>';
   /* 远处的一点车灯 */
   s+='<circle cx="30" cy="146" r="2" fill="#ffe7b8" opacity=".8"/><circle cx="18" cy="147" r="2" fill="#ff9a7a" opacity=".6"/>';
+  if(!open){
+    s+='<rect width="360" height="210" fill="#05060a" opacity=".34"/>';
+  }
   s+='</svg>';
   return s;
 }
+function svcDaysLeft(){
+  var d = new Date().getDay();
+  return d === 0 ? 0 : (7 - d);
+}
 function renderSvc(){
-  var h='<div class="hero">'+stationSVG()
+  var open = svcOpen(), left = svcDaysLeft();
+  var h='<div class="hero">'+stationSVG(open)
    +'<div class="hud"><div class="hud row"><span class="hday">服 务 区</span>'
-   +'<span class="hpill">'+S.points+' 点</span></div></div></div>';
+   +'<span class="hpill">'+(open?'营业中':'歇业 · 周日开')+'</span></div>'
+   +'<div class="hud row end"><div class="hbig" style="font-size:22px">'+S.points+' 点<em>'+(open?'今天想买什么就买':'还 有 '+left+' 天')+'</em></div></div></div></div>';
 
-  if(!svcOpen()){
-    h+='<div class="panel"><p class="ptitle">门 是 关 的</p>'
-     +'<div class="hint" style="text-align:left;font-size:12px;line-height:1.7">服务区只有周日开门。<br>今天周'+WK[new Date().getDay()]+'，再跑两天就到了。</div>'
-     +'<div class="btns"><button class="big" onclick="A.tab(\'garage\')">回车里</button></div></div>';
-    return h;
+  if(!open){
+    h+='<div class="panel closed"><p class="ptitle">门 是 关 的</p>'
+     +'<div class="hint" style="text-align:left;font-size:12px;line-height:1.75">'
+     +'今天周'+WK[new Date().getDay()]+'，店里的人在睡觉。<br>'
+     +'货架你可以先看，周日来了再掏钱。<br>'
+     +'<b style="color:var(--amber)">周日 00:00 开门，还有 '+left+' 天。</b></div></div>';
   }
 
   h+='<div class="panel"><p class="ptitle">货 架</p>';
   [['water','水（1 瓶）',1,'渴了能喝'],['wash','洗漱包',1,'洗澡用'],['biscuit','压缩饼干',2,'吃了饱腹 +35'],
    ['coffee','咖啡',2,'精力 +25'],['med','感冒药',4,'解除感冒'],['bag','睡袋',5,'明日精力 +20']].forEach(function(x){
-    h+='<div class="item"><div class="n">'+x[1]+'<small> '+x[3]+'</small></div>'
+    h+='<div class="item'+(open?'':' dim')+'"><div class="n">'+x[1]+'<small> '+x[3]+'</small></div>'
      +'<div class="c">'+x[2]+' 点</div>'
-     +'<button class="mini" onclick="A.buy(\''+x[0]+'\')">买</button></div>';
+     +'<button class="mini" '+(open?'':'disabled')+' onclick="A.buy(\''+x[0]+'\')">'+(open?'买':'周日')+'</button></div>';
   });
   h+='</div>';
 
-  var st=svcStock();
+  var st = svcStock();
   if(st.length){
     h+='<div class="panel"><p class="ptitle">本 周 上 架</p><div class="furn">';
     st.forEach(function(id){
-      var own=has(id);
-      h+='<div class="fcard"><b>'+FURN[id].n+'</b><small>'+FURN[id].d+'</small>'
-       +'<button class="buy" '+(own?'disabled':'')+' onclick="A.buyFurn(\''+id+'\')">'
-       +(own?'已拥有':FURN[id].p+' 点')+'</button></div>';
+      var own = has(id);
+      h+='<div class="fcard'+(open?'':' dim')+'"><b>'+FURN[id].n+'</b><small>'+FURN[id].d+'</small>'
+       +'<button class="buy" '+(own||!open?'disabled':'')+' onclick="A.buyFurn(\''+id+'\')">'
+       +(own?'已拥有':(open?FURN[id].p+' 点':'周日 '+FURN[id].p))+'</button></div>';
     });
     h+='</div><div class="hint" style="text-align:left;margin-top:10px">买下的家具会出现在「家」里。</div></div>';
   }
 
   h+='<div class="panel"><p class="ptitle">改 装 件</p>'
-   +'<div class="item"><div class="n">一个改装件<small> 车间干满 180 分钟也能换</small></div>'
-   +'<div class="c">25 点</div><button class="mini" onclick="A.buy(\'mod\')">买</button></div></div>';
+   +'<div class="item'+(open?'':' dim')+'"><div class="n">一个改装件<small> 车间干满 180 分钟也能换</small></div>'
+   +'<div class="c">25 点</div><button class="mini" '+(open?'':'disabled')+' onclick="A.buy(\'mod\')">'+(open?'买':'周日')+'</button></div></div>';
 
   h+='<div class="btns"><button class="big" onclick="A.tab(\'garage\')">回车里</button></div>';
   return h;
 }
 
-/* ---------- 副本：四座塔 ---------- */
+/* ---------- 副本：四座塔，四种形状，三道关 ---------- */
 var TOWERS=[
- { id:'math', n:'守望之塔', sub:'数学', c:'#7fd3ff', short:'塔身是无数道算错的题垒起来的。',
+ { id:'math', n:'守望之塔', sub:'数学', c:'#7fd3ff', shape:'spire',
+   short:'塔身是无数道算错的题垒起来的。',
    rules:['极限里 ε 是任意的，δ 要跟着 ε 找','矩阵的秩，等于它非零特征值的个数','同一道题做三遍，胜过三道题各做一遍'],
-   fake:1, why:'秩是非零奇异值的个数。只有极特殊的情况下它才等于非零特征值的个数，别拿这个当定理。' },
- { id:'eng', n:'五海之王', sub:'英语', c:'#8ee8b8', short:'塔里没有声音，只有长句。',
+   fake:1, why:'秩是「非零奇异值」的个数。只有极特殊的矩阵，它才等于非零特征值的个数，别拿这个当定理。',
+   quiz:[
+    {q:'做完一道题，最该做的是什么？',o:['对答案，看对错','合上讲义，自己把思路复述一遍','立刻做下一道','抄到错题本上'],a:1,why:'对错只是结果，能复述才是真会了。'},
+    {q:'错题本怎么用最有效？',o:['抄题、抄答案','只记题号','写下当时错在哪一步，一周后重做','每天翻一遍'],a:2,why:'错题本的价值在「错的那一步」，不在题目本身。'},
+    {q:'「看懂了」和「会做」的区别是？',o:['没有区别','看懂是能识别，会做是能在空白纸上重建','会做只是更快','看懂更难'],a:1,why:'看懂是认得路，会做是自己能走一遍。'},
+    {q:'一道题卡了 25 分钟，最该？',o:['继续死磕','看答案然后抄一遍','标出卡在哪一步，先跳，当天回来补','换一科'],a:2,why:'卡点是有价值的，时间不是。先把卡点记下来。'},
+    {q:'复习数学最省时间的做法？',o:['从头再刷一遍','只做新题','把错题按错因分类，只重做这一类','只看视频'],a:2,why:'同一类错因，错三遍就是三种同一件事。'},
+    {q:'怎么判断自己真会了？',o:['能背出公式','能讲给别人听，还接得住追问','做题速度快','笔记整齐'],a:1,why:'讲得出来，说明结构在你脑子里。'}
+   ]},
+ { id:'eng', n:'五海之王', sub:'英语', c:'#8ee8b8', shape:'zig',
+   short:'塔里没有声音，只有长句。',
    rules:['阅读错题要定位回原文那一句','作文模板背得越熟，分越稳','单词要在句子里记，单背表忘得快'],
-   fake:1, why:'模板套得越像，阅卷老师扣得越狠。结构可以学，句子必须是你自己的。' },
- { id:'hw', n:'剃刀高地', sub:'专业课 / 硬件', c:'#ffb06a', short:'一层一层往上，每层都在问同一个问题：地在哪里。',
+   fake:1, why:'模板套得越像，阅卷老师扣得越狠。结构可以学，句子必须是你自己的。',
+   quiz:[
+    {q:'背单词最该避免的是？',o:['在句子里记','只背中文释义，不看它出现时的语境','每天少量多次','复习旧词'],a:1,why:'同一个词在不同句子里是两个词。'},
+    {q:'阅读错题复盘的核心？',o:['记住正确答案','定位回原文那一句，看自己漏了哪个限定词','多做题','背长难句'],a:1,why:'错的不是选项，是你读那一句时的注意力。'},
+    {q:'作文提分最慢但最稳的是？',o:['背模板','每天写三句自己的话，再改一句','背范文','练字'],a:1,why:'自己的句子才带得走。'},
+    {q:'听力「听懂了但选错」，通常因为？',o:['词汇量不够','没抓住题目问的是谁、做了什么','语速太快','紧张'],a:1,why:'听懂了内容，没听懂问题。'},
+    {q:'长难句卡住时先找什么？',o:['生词','主干：谁，做了什么','从句','时态'],a:1,why:'主干出来了，剩下的都是挂件。'},
+    {q:'每天英语时间很碎，最该优先？',o:['刷一套阅读','复习昨天的词 + 精读一段','背作文','看剧'],a:1,why:'碎片时间适合复习和精读，不适合成套。'}
+   ]},
+ { id:'hw', n:'剃刀高地', sub:'专业课 / 硬件', c:'#ffb06a', shape:'twin',
+   short:'一层一层往上，每层都在问同一个问题：地在哪里。',
    rules:['六层板叠层里，地平面和电源平面尽量相邻','阻抗只要布线时算一次线宽就够了','信号跨分割，本质是回流路径断了'],
-   fake:1, why:'介质厚度、参考面、叠层一变，阻抗跟着变。线宽要按每一段的实际叠层重算。' },
- { id:'pol', n:'龙达季风', sub:'政治', c:'#c9a6ff', short:'风一直在吹，吹的都是年份和人名。',
+   fake:1, why:'介质厚度、参考面、叠层一变，阻抗就跟着变。线宽要按每一段的实际叠层重算。',
+   quiz:[
+    {q:'画 PCB 之前最该先定的是？',o:['线宽','器件按什么分区，回流路径怎么走','丝印','阻焊颜色'],a:1,why:'布局决定回流，回流决定能不能跑。'},
+    {q:'电源树设计的第一原则？',o:['电压够就行','每路电流留余量，并且定好上电时序','芯片越贵越好','板子越小越好'],a:1,why:'时序错了，电压对也不起来。'},
+    {q:'地和电源平面相邻的好处？',o:['好看','形成平板电容，降低电源阻抗','省层数','好布线'],a:1,why:'这是六层板最值钱的一层结构。'},
+    {q:'调试一块新板子，第一步？',o:['直接上电跑程序','先量各路电源对地阻抗，再分级上电','烧程序','看原理图'],a:1,why:'先确认没短路，再给它电。'},
+    {q:'信号完整性里的「跨分割」指的是？',o:['走线交叉','参考平面不连续，回流路径断了','差分对不等长','过孔太多'],a:1,why:'回流断了，能量就会变成辐射和振铃。'},
+    {q:'核心板 + 自研底板，最该先确认？',o:['外观','电源时序和 DDR / 接口电平','丝印','层数'],a:1,why:'这两样不对，板子再漂亮也是砖。'}
+   ]},
+ { id:'pol', n:'龙达季风', sub:'政治', c:'#c9a6ff', shape:'bulb',
+   short:'风一直在吹，吹的都是年份和人名。',
    rules:['马原的选择题靠理解，不靠背','史纲只要记住年份就够了','时政放到最后一个月集中看也行'],
-   fake:1, why:'年份只是坐标，考的是「为什么是这一年」。只记年份，题目换个问法就废了。' }
+   fake:1, why:'年份只是坐标，考的是「为什么是这一年」。只记年份，题目换个问法就废了。',
+   quiz:[
+    {q:'马原选择题最有效的方式？',o:['背结论','先抓材料在说「什么关系」，再对选项','排除法','选最长的那句'],a:1,why:'马原考关系，不考结论。'},
+    {q:'史纲的时间线怎么记最省力？',o:['抄年份表','按「为什么发生 → 解决了什么」串起来','背口诀','只看真题'],a:1,why:'因果串起来，年份自己会挂上去。'},
+    {q:'时政什么时候开始看？',o:['最后一周','从九月起，每周十分钟','考前三天','不看'],a:1,why:'时政是积累，不是突击。'},
+    {q:'政治大题得分的关键？',o:['字数多','分点，并且用材料里的原话','字好看','背模板'],a:1,why:'分点给分，原话给分。'},
+    {q:'一轮复习政治最该避免？',o:['做题','只听课不做题，以为听懂了','看大纲','做笔记'],a:1,why:'听课的懂，是别人的懂。'},
+    {q:'选择题总在两个选项之间纠结，说明？',o:['运气差','没抓住题干的关键限定词','知识不够','题太难'],a:1,why:'限定词决定答案，两个选项都「对」，只有一个「更对」。'}
+   ]}
 ];
 function TOWER_OF(id){ for(var i=0;i<TOWERS.length;i++) if(TOWERS[i].id===id) return TOWERS[i]; return TOWERS[0] }
 function towerOf(id){ return TOWER_OF(id) }
-function towerDone(id){ return !!(S.towerDone&&S.towerDone[id]) }
+function towerDone(id){ return !!(S.towerDone && S.towerDone[id]) }
 function towerWin(){ return S.tower && S.tower.id ? S.tower : null }
 function towerReady(){
-  var w=towerWin(); if(!w||!w.ready0) return false;
-  return Date.now()>=w.end && S.km>w.km0;
+  var w = towerWin(); if(!w || !w.ready0) return false;
+  return Date.now() >= w.end && S.km > w.km0;
 }
-function towerVSvg(t,lit,open){
-  var s='<svg viewBox="0 0 360 230" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%">'
+function towerQuiz(t, n){
+  var pool = t.quiz.slice(), out = [];
+  while(out.length < n && pool.length) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+  return out;
+}
+
+function towerVSvg(t, lit, open){
+  var c = t.c, shape = t.shape || 'spire';
+  var base = 196;
+  var s = '<svg viewBox="0 0 360 230" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%">'
    +'<defs>'
    +'<linearGradient id="tsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b0d18"/><stop offset="1" stop-color="#242140"/></linearGradient>'
    +'<linearGradient id="tbd" x1="0" y1="0" x2="1" y2="0">'
    +'<stop offset="0" stop-color="#191424"/><stop offset=".55" stop-color="#3a3054"/><stop offset="1" stop-color="#161120"/></linearGradient>'
-   +'<radialGradient id="tglow"><stop offset="0" stop-color="'+t.c+'" stop-opacity=".55"/><stop offset="1" stop-color="'+t.c+'" stop-opacity="0"/></radialGradient>'
-   +'<radialGradient id="tlamp"><stop offset="0" stop-color="'+t.c+'" stop-opacity=".75"/><stop offset="1" stop-color="'+t.c+'" stop-opacity="0"/></radialGradient>'
+   +'<linearGradient id="tbd2" x1="0" y1="0" x2="1" y2="0">'
+   +'<stop offset="0" stop-color="#151020"/><stop offset=".5" stop-color="#332a4c"/><stop offset="1" stop-color="#120e1c"/></linearGradient>'
+   +'<radialGradient id="tglow"><stop offset="0" stop-color="'+c+'" stop-opacity=".55"/><stop offset="1" stop-color="'+c+'" stop-opacity="0"/></radialGradient>'
+   +'<radialGradient id="tlamp"><stop offset="0" stop-color="'+c+'" stop-opacity=".75"/><stop offset="1" stop-color="'+c+'" stop-opacity="0"/></radialGradient>'
    +'</defs>'
    +'<rect width="360" height="230" fill="url(#tsky)"/>';
-  for(var i=0;i<30;i++){
-    s+='<circle cx="'+((i*53+17)%360)+'" cy="'+((i*31+9)%120)+'" r="'+(i%5?0.55:0.95)+'" fill="#fff" opacity="'+((i%6)*0.035+0.12).toFixed(2)+'"/>';
+  for(var i = 0; i < 30; i++){
+    s += '<circle cx="'+((i*53+17)%360)+'" cy="'+((i*31+9)%120)+'" r="'+(i%5?0.55:0.95)+'" fill="#fff" opacity="'+((i%6)*0.035+0.12).toFixed(2)+'"/>';
   }
-  s+='<circle cx="292" cy="46" r="16" fill="#efe6d2" opacity=".85"/>'
-   +'<circle cx="292" cy="46" r="40" fill="url(#tglow)" opacity=".35"/>'
-   +'<path d="M0,196 L70,182 L140,192 L210,178 L280,190 L360,180 L360,230 L0,230 Z" fill="#14121c"/>'
-   +'<rect x="0" y="196" width="360" height="34" fill="#0d0b13"/>';
+  s += '<circle cx="292" cy="46" r="16" fill="#efe6d2" opacity=".85"/>'
+   + '<circle cx="292" cy="46" r="40" fill="url(#tglow)" opacity=".35"/>'
+   + '<path d="M0,196 L70,182 L140,192 L210,178 L280,190 L360,180 L360,230 L0,230 Z" fill="#14121c"/>'
+   + '<rect x="0" y="196" width="360" height="34" fill="#0d0b13"/>';
 
-  var base=196, top=58, hwB=35, hwT=19;
-  function hw(y){ return hwT + (base-y)/(base-top)*(hwB-hwT) }
+  var body = '', wins = [];
 
-  /* 塔身 */
-  s+='<path d="M'+(180-hw(base))+','+base+' L'+(180-hw(top))+','+top+' L'+(180+hw(top))+','+top+' L'+(180+hw(base))+','+base+' Z" fill="url(#tbd)"/>'
-   +'<path d="M'+(180-hw(base))+','+base+' L'+(180-hw(top))+','+top+'" stroke="'+t.c+'" stroke-width="1.6" opacity=".38"/>'
-   +'<path d="M'+(180+hw(base))+','+base+' L'+(180+hw(top))+','+top+'" stroke="#000" stroke-width="1.4" opacity=".45"/>';
+  if(shape === 'spire'){
+    var top = 58, hwB = 35, hwT = 19;
+    function hw(y){ return hwT + (base - y) / (base - top) * (hwB - hwT) }
+    body += '<path d="M'+(180-hw(base))+','+base+' L'+(180-hw(top))+','+top+' L'+(180+hw(top))+','+top+' L'+(180+hw(base))+','+base+' Z" fill="url(#tbd)"/>'
+     + '<path d="M'+(180-hw(base))+','+base+' L'+(180-hw(top))+','+top+'" stroke="'+c+'" stroke-width="1.6" opacity=".38"/>';
+    [176,152,128,104,80].forEach(function(y){
+      var w = hw(y);
+      body += '<rect x="'+(180-w)+'" y="'+(y-3)+'" width="'+(w*2)+'" height="3" fill="#0c0a14" opacity=".55"/>';
+      for(var k = 0; k < 3; k++) wins.push({x: 180 + (k-1) * Math.max(9, w*0.52), y: y + 6, w: 9, h: 11});
+    });
+    body += '<rect x="'+(180-hw(top)-9)+'" y="'+(top-6)+'" width="'+(hw(top)*2+18)+'" height="7" rx="2" fill="#2f2745"/>'
+     + '<path d="M'+(180-hw(top)-11)+','+(top-6)+' L180,'+(top-30)+' L'+(180+hw(top)+11)+','+(top-6)+' Z" fill="#3a3054"/>'
+     + '<path d="M180,'+(top-30)+' L180,'+(top-48)+'" stroke="#2f2745" stroke-width="1.8"/>'
+     + '<path d="M180,'+(top-48)+' L196,'+(top-43)+' L180,'+(top-38)+' Z" fill="'+c+'" opacity=".85"/>';
+  }
 
-  /* 檐口与屋顶 */
-  s+='<rect x="'+(180-hw(top)-9)+'" y="'+(top-6)+'" width="'+(hw(top)*2+18)+'" height="7" rx="2" fill="#2f2745"/>'
-   +'<path d="M'+(180-hw(top)-11)+','+(top-6)+' L180,'+(top-30)+' L'+(180+hw(top)+11)+','+(top-6)+' Z" fill="#3a3054"/>'
-   +'<path d="M180,'+(top-30)+' L180,'+(top-48)+'" stroke="#2f2745" stroke-width="1.8"/>'
-   +'<path d="M180,'+(top-48)+' L'+(180+16)+','+(top-43)+' L180,'+(top-38)+' Z" fill="'+t.c+'" opacity=".85"/>';
-
-  /* 五层窗：从顶往下点亮 */
-  var floors=[80,104,128,152,176];
-  floors.forEach(function(y,fi){
-    var w=hw(y);
-    s+='<rect x="'+(180-w)+'" y="'+(y-3)+'" width="'+(w*2)+'" height="3" fill="#0c0a14" opacity=".55"/>';
-    for(var c=0;c<3;c++){
-      var k=fi*3+c, on=k<lit;
-      var wx=180+(c-1)*Math.max(9,w*0.52);
-      if(on) s+='<circle cx="'+wx+'" cy="'+(y+10)+'" r="11" fill="url(#tlamp)"/>';
-      s+='<rect x="'+(wx-4.5)+'" y="'+(y+6)+'" width="9" height="11" rx="1.6" fill="'+(on?t.c:'#0e0b16')+'" opacity="'+(on?'1':'.9')+'"/>';
-      if(!on) s+='<rect x="'+(wx-4.5)+'" y="'+(y+6)+'" width="9" height="11" rx="1.6" fill="none" stroke="#3a3054" stroke-width=".8"/>';
+  if(shape === 'zig'){
+    for(var i = 0; i < 5; i++){
+      var y0 = base - i * 26, w2 = 74 - i * 12;
+      body += '<rect x="'+(180-w2)+'" y="'+(y0-26)+'" width="'+(w2*2)+'" height="26" fill="url(#tbd)"/>'
+       + '<rect x="'+(180-w2)+'" y="'+(y0-26)+'" width="'+(w2*2)+'" height="2.6" fill="#3d3357"/>'
+       + '<rect x="'+(180-w2)+'" y="'+(y0-2.6)+'" width="'+(w2*2)+'" height="2.6" fill="#0c0a14" opacity=".7"/>';
+      for(var k2 = 0; k2 < 3; k2++) wins.push({x: 180 + (k2-1) * 15, y: y0 - 12, w: 9, h: 11});
     }
-  });
-
-  /* 门与台阶 */
-  s+='<rect x="167" y="176" width="26" height="20" rx="2" fill="'+(open?t.c:'#0f0d16')+'" opacity="'+(open?'.9':'1')+'"/>'
-   +'<rect x="167" y="176" width="26" height="20" rx="2" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="1.2"/>';
-  if(open) s+='<ellipse cx="180" cy="198" rx="52" ry="11" fill="url(#tglow)"/>';
-  s+='<rect x="160" y="194" width="40" height="4" rx="1.5" fill="#241d31"/>'
-   +'<rect x="155" y="198" width="50" height="4" rx="1.5" fill="#1c1726"/>';
-  s+='</svg>';
-  return s;
-}
-function renderTower(){
-  var sel=S.towerSel||'math', t=TOWER_OF(sel), w=towerWin();
-  var done=towerDone(sel), rd=w&&w.id===sel&&towerReady();
-  var lit=done?15:(rd?9:3);
-  var h='<div class="hero">'+towerVSvg(t,lit,rd||done)
-   +'<div class="hud"><div class="hud row"><span class="hday">'+t.n+'</span>'
-   +'<span class="hpill">'+t.sub+(done?' · 已 通 塔':'')+'</span></div>'
-   +'<div class="hud row end"><div class="hbig" style="font-size:22px">'+(done?'已 空':(rd?'门 开 了':'门 关 着'))+'<em>'+t.short+'</em></div></div></div></div>';
-
-  h+='<div class="tlist">';
-  TOWERS.forEach(function(x){
-    var isDone=towerDone(x.id), isAct=w&&w.id===x.id;
-    h+='<button class="tcard'+(x.id===sel?' on':'')+(isDone?' done':'')+'" onclick="A.towerSel(\''+x.id+'\')">'
-     +'<b>'+x.n+'</b><span>'+x.sub+'</span>'
-     +'<em>'+(isDone?'已通':(isAct?(towerReady()?'门开了':'在塔下'):'未进'))+'</em></button>';
-  });
-  h+='</div>';
-
-  h+='<div class="panel">';
-  if(done){
-    h+='<p class="ptitle">空 了</p><div class="hint" style="text-align:left;font-size:12px;line-height:1.7">这座塔已经空了。规则你记住了，剩下的靠每天那段路。</div>';
-  } else if(w&&w.id===sel&&!rd){
-    var left=Math.max(0,Math.round((w.end-Date.now())/60000));
-    h+='<p class="ptitle">还 在 塔 下</p>'
-     +'<div class="hint" style="text-align:left;font-size:12px;line-height:1.7">'
-     +'这段 90 分钟还没跑完'+(left?'，还有 '+left+' 分钟':'，去把它结算了')+'。<br>跑完记得问自己一句：这段真的进去了吗。</div>';
-  } else if(rd){
-    h+='<p class="ptitle">塔 门</p>'
-     +'<div class="hint" style="text-align:left;font-size:12px;line-height:1.7">门开了。里面有三条规矩，只有一条是假的。<br>指错了，感染 +1，里程不退。</div>'
-     +'<div class="btns"><button class="big primary" onclick="A.towerEnter()">推门进去</button></div>';
-  } else {
-    h+='<p class="ptitle">进 塔</p>'
-     +'<div class="hint" style="text-align:left;font-size:12px;line-height:1.7">进塔 = 一段 90 分钟的路，耗 2 格油。<br>里程照常算，只是这段路上多了一座塔。</div>'
-     +'<div class="btns"><button class="big primary" onclick="A.towerStart(\''+sel+'\')">进塔 · 90 分钟</button></div>';
+    body += '<path d="M180,92 L180,64" stroke="#2f2745" stroke-width="1.8"/>'
+     + '<path d="M180,64 L196,69 L180,74 Z" fill="'+c+'" opacity=".85"/>';
   }
-  h+='</div>';
 
-  h+='<div class="panel"><p class="ptitle">这 四 座 塔</p>'
-   +'<div class="hint" style="text-align:left;font-size:11.5px;line-height:1.8">四座塔各对应一门要考的东西。通一座，给一件改装件、5 点，感染退一格。<br>同一座塔只能通一次。</div></div>';
+  if(shape === 'twin'){
+    [-1, 1].forEach(function(sgn, ci){
+      var cx = 180 + sgn * 34;
+      body += '<rect x="'+(cx-13)+'" y="86" width="26" height="'+(base-86)+'" fill="url(#tbd2)"/>'
+       + '<rect x="'+(cx-13)+'" y="86" width="26" height="3" fill="#3d3357"/>'
+       + '<path d="M'+(cx-13)+',86 L'+(cx-13)+','+base+'" stroke="'+c+'" stroke-width="1.3" opacity=".3"/>'
+       + '<path d="M'+(cx-18)+',86 L'+(cx+18)+',86 L'+(cx+13)+',74 L'+(cx-13)+',74 Z" fill="#332a4c"/>';
+      [176, 140, 104].forEach(function(y2){
+        wins.push({x: cx, y: y2, w: 9, h: 12});
+        wins.push({x: cx + sgn * 0.001, y: y2 + 0, w: 0.001, h: 0.001}); /* 占位，保持计数对齐 */
+      });
+    });
+    body += '<rect x="146" y="118" width="68" height="9" rx="2" fill="#332a4c"/>'
+     + '<rect x="146" y="118" width="68" height="2" rx="1" fill="#4a3f6a"/>'
+     + '<path d="M146,126 L214,126" stroke="#0c0a14" stroke-width="2" opacity=".7"/>';
+  }
+
+  if(shape === 'bulb'){
+    body += '<rect x="156" y="108" width="48" height="'+(base-108)+'" fill="url(#tbd)"/>'
+     + '<path d="M156,108 A24,26 0 0 1 204,108 Z" fill="#3a3054"/>'
+     + '<path d="M156,108 L156,'+base+'" stroke="'+c+'" stroke-width="1.3" opacity=".3"/>'
+     + '<path d="M180,82 L180,60" stroke="#2f2745" stroke-width="1.8"/>'
+     + '<path d="M180,60 L196,65 L180,70 Z" fill="'+c+'" opacity=".85"/>';
+    /* 缠在塔身上的一条风带 */
+    body += '<path d="M150,150 C 186,140 214,158 150,166 " stroke="'+c+'" stroke-width="2.2" fill="none" opacity=".28"/>'
+     + '<path d="M150,174 C 186,164 214,182 150,190 " stroke="'+c+'" stroke-width="2.2" fill="none" opacity=".18"/>';
+    [122, 146, 170].forEach(function(y3){
+      wins.push({x: 168, y: y3, w: 8, h: 10});
+      wins.push({x: 192, y: y3, w: 8, h: 10});
+    });
+  }
+
+  /* 窗：从下往上数前 lit 扇亮 */
+  var shown = wins.filter(function(w){ return w.w > 1 });
+  var onIdx = {};
+  for(var q = 0; q < Math.min(lit, shown.length); q++) onIdx[q] = true;
+  shown.forEach(function(w, idx){
+    var on = !!onIdx[idx];
+    if(on) body += '<circle cx="'+w.x+'" cy="'+(w.y+w.h/2)+'" r="11" fill="url(#tlamp)"/>';
+    body += '<rect x="'+(w.x-w.w/2)+'" y="'+w.y+'" width="'+w.w+'" height="'+w.h+'" rx="1.6" fill="'+(on?c:'#0e0b16')+'"/>';
+    if(!on) body += '<rect x="'+(w.x-w.w/2)+'" y="'+w.y+'" width="'+w.w+'" height="'+w.h+'" rx="1.6" fill="none" stroke="#3a3054" stroke-width=".8"/>';
+  });
+
+  /* 门 */
+  body += '<rect x="167" y="176" width="26" height="20" rx="2" fill="'+(open?c:'#0f0d16')+'" opacity="'+(open?'.9':'1')+'"/>'
+   + '<rect x="167" y="176" width="26" height="20" rx="2" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="1.2"/>';
+  if(open) body += '<ellipse cx="180" cy="198" rx="52" ry="11" fill="url(#tglow)"/>';
+  body += '<rect x="160" y="194" width="40" height="4" rx="1.5" fill="#241d31"/>'
+   + '<rect x="155" y="198" width="50" height="4" rx="1.5" fill="#1c1726"/>';
+
+  return s + body + '</svg>';
+}
+
+function renderTower(){
+  var sel = S.towerSel || 'math', t = TOWER_OF(sel), w = towerWin();
+  var done = towerDone(sel), rd = w && w.id === sel && towerReady();
+  var inTower = S.tq && S.tq.id === sel;
+  var lit = done ? 15 : (rd ? 9 : (inTower ? 5 : 3));
+  var h = '<div class="hero">' + towerVSvg(t, lit, rd || done)
+   + '<div class="hud"><div class="hud row"><span class="hday">' + t.n + '</span>'
+   + '<span class="hpill">' + t.sub + (done ? ' · 已 通 塔' : '') + '</span></div>'
+   + '<div class="hud row end"><div class="hbig" style="font-size:22px">'
+   + (done ? '已 空' : (inTower ? '第 ' + (S.tq.step + 1) + ' 关' : (rd ? '门 开 了' : '门 关 着')))
+   + '<em>' + t.short + '</em></div></div></div></div>';
+
+  h += '<div class="tlist">';
+  TOWERS.forEach(function(x){
+    var isDone = towerDone(x.id), isAct = w && w.id === x.id;
+    h += '<button class="tcard' + (x.id === sel ? ' on' : '') + (isDone ? ' done' : '') + '" onclick="A.towerSel(\'' + x.id + '\')">'
+     + '<b>' + x.n + '</b><span>' + x.sub + '</span>'
+     + '<em>' + (isDone ? '已通' : (isAct ? (towerReady() ? '门开了' : '在塔下') : '未进')) + '</em></button>';
+  });
+  h += '</div>';
+
+  h += '<div class="panel">';
+  if(done){
+    h += '<p class="ptitle">空 了</p><div class="hint" style="text-align:left;font-size:12px;line-height:1.7">这座塔已经空了。规则你记住了，剩下的靠每天那段路。</div>';
+  } else if(inTower){
+    h += '<p class="ptitle">还 在 里 面</p>'
+     + '<div class="hint" style="text-align:left;font-size:12px;line-height:1.7">第 ' + (S.tq.step + 1) + ' 关，错了 ' + S.tq.wrong + ' 次。<br>三道关里最多错一次。</div>'
+     + '<div class="btns"><button class="big primary" onclick="A.towerEnter()">接着过</button></div>';
+  } else if(w && w.id === sel && !rd){
+    var left = Math.max(0, Math.round((w.end - Date.now()) / 60000));
+    h += '<p class="ptitle">还 在 塔 下</p>'
+     + '<div class="hint" style="text-align:left;font-size:12px;line-height:1.7">'
+     + '这段 90 分钟还没跑完' + (left ? '，还有 ' + left + ' 分钟' : '，去把它结算了') + '。<br>跑完记得问自己一句：这段真的进去了吗。</div>';
+  } else if(rd){
+    h += '<p class="ptitle">塔 门</p>'
+     + '<div class="hint" style="text-align:left;font-size:12px;line-height:1.7">门开了。三道关：<br>一条假规矩，两道守塔人的问。<br>最多错一次，错两次门就关。</div>'
+     + '<div class="btns"><button class="big primary" onclick="A.towerEnter()">推门进去</button></div>';
+  } else {
+    h += '<p class="ptitle">进 塔</p>'
+     + '<div class="hint" style="text-align:left;font-size:12px;line-height:1.7">进塔 = 一段 90 分钟的路，耗 2 格油。<br>里程照常算，只是这段路上多了一座塔。</div>'
+     + '<div class="btns"><button class="big primary" onclick="A.towerStart(\'' + sel + '\')">进塔 · 90 分钟</button></div>';
+  }
+  h += '</div>';
+
+  h += '<div class="panel"><p class="ptitle">这 四 座 塔</p>'
+   + '<div class="hint" style="text-align:left;font-size:11.5px;line-height:1.8">四座塔各对应一门要考的东西，形状不一样，问题也不一样。<br>通一座，给一件改装件、感染退一格。同一座塔只能通一次。</div></div>';
   return h;
 }
-function towerSel(id){ S.towerSel=id; save(); render() }
+function towerSel(id){ S.towerSel = id; save(); render() }
 function towerStart(id){
   if(T) return toast('正在计时');
   if(towerDone(id)) return toast('这座塔已经空了');
-  var w=towerWin();
-  if(w&&w.id===id&&!towerReady()) return toast('这段还没跑完');
-  var st=segState('long',nowInfo());
+  var w = towerWin();
+  if(w && w.id === id && !towerReady()) return toast('这段还没跑完');
+  var st = segState('long', nowInfo());
   if(!st.ok) return toast(st.why);
-  S.towerSel=id;
-  S.tower={id:id,km0:S.km,end:Date.now()+segMs('long'),ready0:1};
+  S.towerSel = id;
+  S.tower = {id: id, km0: S.km, end: Date.now() + segMs('long'), ready0: 1};
+  S.tq = null;
   save();
   startSeg('long');
+  snd('start');
   toast('进塔了。90 分钟后回来开门。');
 }
 function towerEnter(){
   if(!towerReady()) return toast('还没到塔下');
-  var t=TOWER_OF(S.tower.id);
-  var h='<div class="modal"><h3>'+t.n+' · 三条规矩</h3>'
-   +'<p>只有一条是假的。指出它，门就开。</p>';
-  t.rules.forEach(function(r,i){
-    h+='<button class="rule" onclick="A.towerPick('+i+')">'+r+'</button>';
-  });
-  h+='</div>';
+  var t = TOWER_OF(S.tower.id);
+  if(!S.tq || S.tq.id !== t.id){
+    S.tq = {id: t.id, step: 0, wrong: 0, qs: towerQuiz(t, 2)};
+    save();
+  }
+  towerStep();
+}
+function towerStep(){
+  var q = S.tq; if(!q) return;
+  var t = TOWER_OF(q.id);
+  var h = '<div class="modal"><h3>' + t.n + '</h3>'
+   + '<p class="tprog">第 ' + (q.step + 1) + ' / 3 关 · 已错 ' + q.wrong + ' 次</p>';
+  if(q.step === 0){
+    h += '<p>只有一条是假的。指出它，门就开。</p>';
+    t.rules.forEach(function(r, i){
+      h += '<button class="rule" onclick="A.towerPick(' + i + ')">' + r + '</button>';
+    });
+  } else {
+    var qq = q.qs[q.step - 1];
+    h += '<p>' + qq.q + '</p>';
+    qq.o.forEach(function(o, i){
+      h += '<button class="rule" onclick="A.towerAns(' + i + ')">' + o + '</button>';
+    });
+  }
+  h += '</div>';
   modal(h);
 }
 function towerPick(i){
-  var w=towerWin(); if(!w) return;
-  var t=TOWER_OF(w.id), ok=(i===t.fake);
-  S.tower=null;
-  var h='';
-  if(ok){
-    S.mods=(S.mods||0)+1;
-    S.points+=5;
-    S.st.inf=Math.max(0,(S.st.inf||0)-1);
-    if(!S.towerDone) S.towerDone={};
-    S.towerDone[t.id]=true;
-    h='<div class="modal"><h3>门开了</h3><p>「'+t.rules[t.fake]+'」是假的。</p>'
-     +'<p style="color:var(--dim);font-size:12px;line-height:1.7">'+t.why+'</p>'
-     +'<p>+1 改装件 · +5 点数 · 感染退一格</p>'
-     +'<div class="btns"><button class="big primary" onclick="A.close()">出去</button></div></div>';
+  var q = S.tq; if(!q) return;
+  var t = TOWER_OF(q.id);
+  var ok = (i === t.fake);
+  if(!ok) q.wrong++;
+  q.step++;
+  if(ok) snd('open'); else snd('err');
+  save();
+  if(q.step > 2) return towerResolve(ok, t);
+  towerStep();
+}
+function towerAns(i){
+  var q = S.tq; if(!q) return;
+  var qq = q.qs[q.step - 1];
+  var ok = (i === qq.a);
+  if(!ok) q.wrong++;
+  q.step++;
+  if(ok) snd('coin'); else snd('err');
+  save();
+  if(q.step > 2) return towerResolve(ok, TOWER_OF(q.id));
+  towerStep();
+}
+function towerResolve(lastOk, t){
+  var q = S.tq, wrong = q ? q.wrong : 3;
+  var pass = wrong <= 1;
+  S.tower = null;
+  S.tq = null;
+  var h = '';
+  if(pass){
+    S.mods = (S.mods || 0) + 1;
+    var pts = wrong === 0 ? 5 : 2;
+    S.points += pts;
+    S.st.inf = Math.max(0, (S.st.inf || 0) - 1);
+    if(!S.towerDone) S.towerDone = {};
+    S.towerDone[t.id] = true;
+    snd('win');
+    h = '<div class="modal win"><h3>门 开 了</h3>'
+     + '<p>假的是：「' + t.rules[t.fake] + '」</p>'
+     + '<p style="color:var(--dim);font-size:12px;line-height:1.7">' + t.why + '</p>'
+     + '<p>' + (wrong === 0 ? '三关全对。' : '错了一次，但也算过了。') + '</p>'
+     + '<p>+1 改装件 · +' + pts + ' 点 · 感染退一格</p>'
+     + '<div class="btns"><button class="big primary" onclick="A.close()">出去</button></div></div>';
   } else {
-    S.st.inf=Math.min(3,(S.st.inf||0)+1);
-    if(!S.towerFail) S.towerFail={};
-    S.towerFail[t.id]=(S.towerFail[t.id]||0)+1;
-    h='<div class="modal"><h3>门没开</h3><p>你指的那条是真的。</p>'
-     +'<p style="color:var(--dim);font-size:12px;line-height:1.7">假的是：「'+t.rules[t.fake]+'」<br>'+t.why+'</p>'
-     +'<p>感染 +1。里程不退，塔下次再来。</p>'
-     +'<div class="btns"><button class="big" onclick="A.close()">下去</button></div></div>';
+    S.st.inf = Math.min(3, (S.st.inf || 0) + 1);
+    if(!S.towerFail) S.towerFail = {};
+    S.towerFail[t.id] = (S.towerFail[t.id] || 0) + 1;
+    snd('fail');
+    h = '<div class="modal"><h3>门 关 了</h3><p>错了 ' + wrong + ' 次。守塔人把门合上了。</p>'
+     + '<p style="color:var(--dim);font-size:12px;line-height:1.7">假的是：「' + t.rules[t.fake] + '」<br>' + t.why + '</p>'
+     + '<p>感染 +1。里程不退，塔下次再来。</p>'
+     + '<div class="btns"><button class="big" onclick="A.close()">下去</button></div></div>';
   }
   save();
   modal(h);
@@ -1778,7 +2047,7 @@ function renderGarage(){
 
   h+='<div class="panel"><p class="ptitle">服 务 区</p>'
    +'<div class="item"><div class="n">'+(svcOpen()?'今天开门':'周日才开')+'</div><div class="c">'+S.points+' 点</div></div>';
-  if(svcOpen()) h+='<div class="btns"><button class="big primary" onclick="A.tab(\'svc\')">去货架看看</button></div>';
+  h+='<div class="btns"><button class="big'+(svcOpen()?' primary':' ghost')+'" onclick="A.tab(\'svc\')">'+(svcOpen()?'去货架看看':'去看看（周日开张）')+'</button></div>';
   h+='</div>';
 
   h+='<div class="panel"><p class="ptitle">里 程</p>'
@@ -1932,7 +2201,8 @@ window.A={
   }
 };
 
-A.towerSel=towerSel; A.towerStart=towerStart; A.towerEnter=towerEnter; A.towerPick=towerPick;
+function sfxToggle(){ S.sfx = sfxOn() ? 0 : 1; save(); render(); snd('tap') }
+A.towerSel=towerSel; A.towerStart=towerStart; A.towerEnter=towerEnter; A.towerPick=towerPick; A.towerAns=towerAns; A.sfxToggle=sfxToggle;
 
 /* ---------- 启动 ---------- */
 S=load();
