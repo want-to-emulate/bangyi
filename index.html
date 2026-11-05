@@ -1981,7 +1981,7 @@ function renderTower(){
     var left = Math.max(0, Math.round((w.end - Date.now()) / 60000));
     h += '<p class="ptitle">还 在 塔 下</p>'
      + '<div class="hint" style="text-align:left;font-size:12px;line-height:1.7">'
-     + '这段 90 分钟还没跑完' + (left ? '，还有 ' + left + ' 分钟' : '，去把它结算了') + '。<br>跑完记得问自己一句：这段真的进去了吗。</div>';
+     + '这段 90 分钟还没跑完' + (left ? '，还有 ' + left + ' 分钟' : '，去把它结算了') + '。<br>跑完记得问自己一句：这段真的进去了吗。</div>' + '<div class="btns"><button class="big primary" onclick="A.tab(\'drive\')">去路上看这段</button></div>';
   } else if(rd){
     h += '<p class="ptitle">塔 门</p>'
      + '<div class="hint" style="text-align:left;font-size:12px;line-height:1.7">门开了。三道关：<br>'
@@ -2022,6 +2022,8 @@ function towerStart(id){
   S.tq = null;
   save();
   startSeg('long');
+  TAB='drive';
+  render();
   snd('start');
   toast('进塔了。90 分钟后回来开门。');
 }
@@ -2061,7 +2063,7 @@ function towerStep(){
      + 'color:#f3ecff;padding:10px;font-size:13px;line-height:1.6;resize:none;font-family:inherit"></textarea>'
      + '<div class="btns"><button class="big primary" onclick="A.towerNote()">就是这句</button></div>';
   }
-  h += '</div>';
+  h += '<div class="btns"><button class="big ghost" onclick="A.close()">先出去</button></div></div>';
   modal(h);
 }
 function towerCard(i){
@@ -2335,7 +2337,7 @@ function showEvent(idx){
     h += '<button class="rule" onclick="A.evPick(' + i + ')">' + o.t + '</button>';
   });
   h += '<p class="evg" style="opacity:.55">今天这一趟已经跑完了。</p>';
-  h += '</div>';
+  h += '<div class="btns"><button class="big ghost" onclick="A.close()">先出去</button></div></div>';
   modal(h);
   snd('open');
 }
