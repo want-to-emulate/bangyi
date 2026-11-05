@@ -904,7 +904,6 @@ function svcStock(){
   return S.svcFurn||[];
 }
 function buy(kind){
-  if(!svcOpen()) return toast('服务区只在周日开');
   var price={water:1,wash:1,biscuit:2,coffee:2,med:4,bag:5,mod:25}[kind];
   if(S.points<price) return toast('点数不够');
   S.points-=price;
@@ -915,7 +914,6 @@ function buy(kind){
   save(); render();
 }
 function buyFurn(id){
-  if(!svcOpen()) return toast('服务区只在周日开');
   if(has(id)) return toast('已经有了');
   var p=FURN[id].p;
   if(S.points<p) return toast('点数不够');
@@ -1058,7 +1056,7 @@ function render(){
 
 function renderNav(){
   if(!S.veh){ $('nav').innerHTML=''; return }
-  var items=[['drive','上路'],['hw','车间'],['car','仓'],['tower','副'],['rank','榜'],['garage','家'],['city','城']];
+  var items=[['drive','上路'],['hw','车间'],['car','仓'],['tower','塔'],['rank','榜'],['garage','家'],['city','城']];
   $('nav').innerHTML=items.map(function(it){
     var cls=(TAB===it[0]?'on':'');
     var dot=(it[0]==='tower'&&towerReady())?'<i class="dot on"></i>':'<i class="dot"></i>';
@@ -1602,71 +1600,53 @@ function sell(k) {
 }
 
 function renderSvc(){
-  var open = svcOpen(), left = svcDaysLeft();
-  var h='<div class="hero">'+stationSVG(open)
+  var h='<div class="hero">'+stationSVG(true)
    +'<div class="hud"><div class="hud row"><span class="hday">服 务 区</span>'
-   +'<span class="hpill">'+(open?'营业中':'歇业 · 周日开')+'</span></div>'
-   +'<div class="hud row end"><div class="hbig" style="font-size:22px">'+S.points+' 点<em>'+(open?'今天想买什么就买':'还 有 '+left+' 天')+'</em></div></div></div></div>';
-
-  if(!open){
-    h+='<div class="panel closed"><p class="ptitle">门 是 关 的</p>'
-     +'<div class="hint" style="text-align:left;font-size:12px;line-height:1.75">'
-     +'今天周'+WK[new Date().getDay()]+'，店里的人在睡觉。<br>'
-     +'货架你可以先看，周日来了再掏钱。<br>'
-     +'<b style="color:var(--amber)">周日 00:00 开门，还有 '+left+' 天。</b></div></div>';
-  }
-
-  h+='<div class="panel"><p class="ptitle">货 架</p>';
-  [['water','水（1 瓶）',1,'渴了能喝'],['wash','洗漱包',1,'洗澡用'],['biscuit','压缩饼干',2,'吃了饱腹 +35'],
-   ['coffee','咖啡',2,'精力 +25'],['med','感冒药',4,'解除感冒'],['bag','睡袋',5,'明日精力 +20']].forEach(function(x){
-    h+='<div class="item'+(open?'':' dim')+'"><div class="n">'+x[1]+'<small> '+x[3]+'</small></div>'
+   +'<span class="hpill">今 天 的 摊 子</span></div>'
+   +'<div class="hud row end"><div class="hbig" style="font-size:22px">'+S.points+' 点<em>加油 · 吃饭 · 洗把脸</em></div></div></div></div>';
+  h+=renderDun();
+  h+='<div class="panel"><p class="ptitle">想 买 东 西</p>'
+   +'<div class="hint" style="text-align:left;font-size:12px;line-height:1.7">货架搬进商店了，随时能买，不用等周日。</div>'
+   +'<div class="btns"><button class="big primary" onclick="A.openShop()">系 统 商 店</button></div></div>';
+  return h;
+}
+var SHELF=[['water','水（1 瓶）',1,'渴了能喝'],['wash','洗漱包',1,'洗澡用'],
+  ['biscuit','压缩饼干',2,'饱腹 +35'],['coffee','咖啡',2,'精力 +25'],
+  ['med','感冒药',4,'解除感冒'],['bag','睡袋',5,'明日精力 +20'],['mod','改装件',25,'一件实物产出']];
+function shopBtn(){
+  return '<div class="panel"><p class="ptitle">商 店</p>'
+   + '<div class="hint" style="text-align:left;font-size:11.5px;line-height:1.7">用点数换东西，随时开。</div>'
+   + '<div class="btns"><button class="big primary" onclick="A.openShop()">系 统 商 店</button></div></div>';
+}
+function openShop(){
+  var h='<p class="ptitle">系 统 商 店</p>'
+   +'<div class="hint" style="text-align:left;font-size:11.5px;line-height:1.7">随时开。买完直接进后备箱，点数不够就先去跑一段。</div>'
+   +'<div class="ptitle" style="margin-top:14px;font-size:12px">货 架</div>';
+  SHELF.forEach(function(x){
+    h+='<div class="item"><div class="n">'+x[1]+'<small> '+x[3]+'</small></div>'
      +'<div class="c">'+x[2]+' 点</div>'
-     +'<button class="mini" '+(open?'':'disabled')+' onclick="A.buy(\''+x[0]+'\')">'+(open?'买':'周日')+'</button></div>';
+     +'<button class="mini" onclick="A.buy(\''+x[0]+'\')">买</button></div>';
   });
-  h+='</div>';
-
-  var stalls = stallPick();
-  if (stalls.length) {
-    h += '<div class="panel"><p class="ptitle">本 周 摊 位</p>';
-    stalls.forEach(function (id) {
-      var st = STALLS[id], used = (S.stallBought || {})[id];
-      h += '<div class="item' + (open ? '' : ' dim') + '"><div class="n">' + st.n + '<small> ' + st.d + '</small></div>'
-        + (id === 'junk' ? '' : '<div class="c">' + st.p + ' 点</div>')
-        + '<button class="mini" ' + (open && !used ? '' : 'disabled') + ' onclick="A.stallBuy(\'' + id + '\')">'
-        + (used ? '买过' : (open ? (id === 'junk' ? '看看' : '买') : '周日')) + '</button></div>';
-      if (id === 'junk') {
-        h += '<div class="hint" style="text-align:left;font-size:11px;line-height:1.6;margin:2px 0 8px">'
-          + '水 1 · 洗漱包 1 · 饼干 2 · 咖啡 2 · 药 3</div>';
-        ['water', 'wash', 'biscuit', 'coffee', 'med'].forEach(function (k) {
-          if (S.inv[k] > 0) {
-            h += '<div class="item"><div class="n" style="padding-left:10px">卖 ' + NAME[k] + ' ×' + S.inv[k] + '</div>'
-              + '<div class="c">+' + SELLP[k] + '</div>'
-              + '<button class="mini" ' + (open ? '' : 'disabled') + ' onclick="A.sell(\'' + k + '\')">卖</button></div>';
+  var st=stallPick();
+  if(st.length){
+    h+='<div class="ptitle" style="margin-top:14px;font-size:12px">本 周 摊 位</div>';
+    st.forEach(function(id){
+      var s2=STALLS[id], used=(S.stallBought||{})[id];
+      h+='<div class="item"><div class="n">'+s2.n+'<small> '+s2.d+'</small></div>'
+       +(id==='junk'?'':'<div class="c">'+s2.p+' 点</div>')
+       +'<button class="mini" '+(used?'disabled':'')+' onclick="A.stallBuy(\''+id+'\')">'+(used?'买过':(id==='junk'?'看看':'买'))+'</button></div>';
+      if(id==='junk'){
+        ['water','wash','biscuit','coffee','med'].forEach(function(k){
+          if(S.inv[k]>0){
+            h+='<div class="item"><div class="n">卖 '+NAME[k]+'<small> 还有 '+S.inv[k]+'</small></div>'
+             +'<div class="c">+'+SELLP[k]+' 点</div><button class="mini" onclick="A.sell(\''+k+'\')">卖</button></div>';
           }
         });
       }
     });
-    h += '<div class="hint" style="text-align:left;margin-top:8px">摊位每周换人，周日刷新。</div></div>';
   }
-
-  var st = svcStock();
-  if(st.length){
-    h+='<div class="panel"><p class="ptitle">本 周 上 架</p><div class="furn">';
-    st.forEach(function(id){
-      var own = has(id);
-      h+='<div class="fcard'+(open?'':' dim')+'"><b>'+FURN[id].n+'</b><small>'+FURN[id].d+'</small>'
-       +'<button class="buy" '+(own||!open?'disabled':'')+' onclick="A.buyFurn(\''+id+'\')">'
-       +(own?'已拥有':(open?FURN[id].p+' 点':'周日 '+FURN[id].p))+'</button></div>';
-    });
-    h+='</div><div class="hint" style="text-align:left;margin-top:10px">买下的家具会出现在「家」里。</div></div>';
-  }
-
-  h+='<div class="panel"><p class="ptitle">改 装 件</p>'
-   +'<div class="item'+(open?'':' dim')+'"><div class="n">一个改装件<small> 车间干满 180 分钟也能换</small></div>'
-   +'<div class="c">25 点</div><button class="mini" '+(open?'':'disabled')+' onclick="A.buy(\'mod\')">'+(open?'买':'周日')+'</button></div></div>';
-
-  h+='<div class="btns"><button class="big" onclick="A.tab(\'garage\')">回车里</button></div>';
-  return h;
+  h+='<div class="btns" style="margin-top:14px"><button class="big ghost" onclick="A.close()">关 上</button></div>';
+  modal(h);
 }
 
 /* ---------- 副本：四座塔，四种形状，三道关 ---------- */
@@ -1996,7 +1976,7 @@ function dunPick() {
   if (S.dunDay !== d || !(S.dunPicks || []).length) {
     var pool = DUNS.map(function (x) { return x.id }), pick = [];
     while (pick.length < 2 && pool.length) pick.push(pool.splice(Math.floor(rnd() * pool.length), 1)[0]);
-    S.dunDay = d; S.dunPicks = pick; S.dunDone = {}; save();
+    S.dunDay = d; S.dunPicks = pick; S.dunDone = {}; if (S.dunRun) { S.dunRun = null; S.dunOpen = null; } save();
   }
   return S.dunPicks || [];
 }
@@ -2006,7 +1986,7 @@ function dunCan() { var d = S.days[dkey()]; return !!(d && d.seg >= 1) && S.fuel
 function dunEnter(id) {
   if (dunDone(id)) return toast('今天已经去过了');
   if (!dunCan()) return toast('先去跑 1 段，再留 2 格油');
-  S.fuel -= 2; S.dunOpen = id; snd('open'); save(); render();
+  S.fuel -= 2; S.dunOpen = id; S.dunRun = null; snd('open'); save(); render();
 }
 function dunClose() { S.dunOpen = null; save(); render() }
 function dunChoice(i) {
@@ -2028,18 +2008,34 @@ function dunChoice(i) {
   ['full', 'thirst', 'nrg', 'hyg'].forEach(function (k) { if (e[k]) { step(k, e[k]); msg.push(({ full: '饱腹', thirst: '口渴', nrg: '精力', hyg: '卫生' })[k] + ' ' + (e[k] > 0 ? '+' : '') + e[k]) } });
   if (e.item) { S.inv[e.item] = (S.inv[e.item] || 0) + e.n; msg.push(NAME[e.item] + ' ×' + e.n) }
   if (e.item2) { S.inv[e.item2] = (S.inv[e.item2] || 0) + e.n; msg.push(NAME[e.item2] + ' ×' + e.n) }
-  S.dunDone = S.dunDone || {}; S.dunDone[id] = 1; S.dunOpen = null;
-  snd('coin'); save(); render();
-  toast(msg.length ? msg.join(' · ') : '什么也没发生');
+  S.dunRun = { id: id, depth: 1, log: msg };
+  S.dunOpen = null; snd('open'); save(); render();
 }
 function renderDun() {
-  var picks = dunPick(), h = '';
+  var picks = dunPick(), h = '', run = S.dunRun;
+  if (run) {
+    var d0 = dunGet(run.id);
+    h += '<div class="panel"><p class="ptitle">' + d0.n + ' · 里 面</p>'
+      + '<div class="hint" style="text-align:left;font-size:12px;line-height:1.8">你已经往里走了 ' + run.depth + ' 步。</div>'
+      + '<div style="text-align:left;font-size:12.5px;line-height:1.95;color:#f3ecff;margin:6px 0 12px">'
+      + (run.log.length ? run.log.join('<br>') : '还什么都没拿到') + '</div>';
+    if (run.depth < 3) {
+      h += '<div class="btns"><button class="big primary" onclick="A.dunDeep()">再 往 前 一 步</button></div>'
+        + '<div class="hint" style="text-align:left;font-size:11px;line-height:1.7;margin-top:8px">'
+        + '越深越可能翻到东西，也越可能出事：状态掉一截，或者感染 +1。</div>'
+        + '<div class="btns" style="margin-top:10px"><button class="big ghost" onclick="A.dunLeave()">拿 着 这 些 走</button></div>';
+    } else {
+      h += '<div class="btns"><button class="big primary" onclick="A.dunLeave()">到 底 了 · 出 去</button></div>';
+    }
+    h += '</div>';
+    return h;
+  }
   var cur = S.dunOpen;
   if (cur) {
     var d = dunGet(cur);
     h += '<div class="panel"><p class="ptitle">' + d.n + '</p>'
       + '<div style="text-align:left;font-size:13px;line-height:1.75;color:#f3ecff">' + d.line + '</div>'
-      + '<div class="hint" style="text-align:left;margin:10px 0 2px">选一个，选完这周就不能再来了。</div>';
+      + '<div class="hint" style="text-align:left;margin:10px 0 2px">选一条路进去。选完还能往里走两步。</div>';
     d.o.forEach(function (o, i) {
       h += '<button class="big" style="width:100%;margin-top:8px;text-align:left" onclick="A.dunChoice(' + i + ')">'
         + '<b style="font-size:15px">' + o.t + '</b><br><span style="font-size:11.5px;opacity:.7">' + o.d + '</span></button>';
@@ -2114,8 +2110,7 @@ function renderTower(){
      + '<div class="hint" style="text-align:left;font-size:11px;line-height:1.7;margin-top:6px">' + S.towerNote.at + ' 写的。做到了吗？</div></div>';
   }
 
-  h += renderDun();
-
+  
   h += '<div class="panel"><p class="ptitle">这 四 座 塔</p>'
    + '<div class="hint" style="text-align:left;font-size:11.5px;line-height:1.8">四座塔各对应一门要考的东西，形状不一样，第一关的账也不一样。<br>通一座，给一件改装件、感染退一格。同一座塔只能通一次。</div></div>';
   return h;
@@ -2243,6 +2238,32 @@ function towerResolve(lastOk, t){
   }
   save();
   modal(h);
+}
+
+var DUNW = { full: '饱腹', thirst: '口渴', nrg: '精力', hyg: '卫生' };
+function dunDeep(){
+  var r = S.dunRun; if(!r) return;
+  if(r.depth >= 3) return dunLeave();
+  var roll = rnd(), m = '';
+  if(roll < 0.42){
+    var ks = ['nrg','hyg','thirst','full'], k = ks[Math.floor(rnd()*4)];
+    var d = -(8 + Math.round(rnd()*6));
+    step(k, d);
+    m = DUNW[k] + ' ' + d;
+    if(rnd() < 0.35){ S.st.inf = clamp((S.st.inf||0) + 1, 0, 3); m += ' · 感染 +1' }
+  } else if(roll < 0.62){ S.boxes = (S.boxes||0) + 1; m = '翻到一个箱子' }
+  else if(roll < 0.80){ var ks2 = ['water','soup','biscuit','energy','coffee','wash','wipe','med','eye']; var it = ks2[Math.floor(rnd()*ks2.length)]; S.inv[it] = (S.inv[it]||0) + 1; m = '捡到 ' + NAME[it] }
+  else if(roll < 0.92){ S.points += 2; m = '点数 +2' }
+  else { S.mods += 1; m = '改装件 +1' }
+  r.depth++; r.log.push(m);
+  snd(roll < 0.42 ? 'err' : 'coin');
+  save(); render();
+}
+function dunLeave(){
+  var r = S.dunRun; if(!r) return;
+  S.dunDone = S.dunDone || {}; S.dunDone[r.id] = 1; S.dunRun = null;
+  toast(r.log.length ? r.log.join(' · ') : '空手出来了');
+  snd('coin'); save(); render();
 }
 
 /* ---------- 路上的随机事件 ---------- */
@@ -2750,6 +2771,7 @@ function renderCar(){
     h+='</div></div>';
   }
 
+  h+=shopBtn();
   h+='<div class="panel"><p class="ptitle">箱 子 里 能 开 出</p><div class="dp">';
   for(var q=0;q<5;q++){
     var names=POOL[q].map(function(p){ return LOOT[p.k].n }).join(' · ');
@@ -3351,7 +3373,7 @@ function sfxToggle(){ S.sfx = sfxOn() ? 0 : 1; save(); render(); snd('tap') }
 A.towerSel=towerSel; A.towerStart=towerStart; A.towerEnter=towerEnter; A.towerCard=towerCard; A.towerRule=towerRule; A.towerNote=towerNote; A.sfxToggle=sfxToggle;
 A.evPick=evPick; A.calm=calm; A.showEv=function(){ if(S.curEv!=null) showEvent(S.curEv) }; A.raw=function(){ return S }; A.maybeEv=maybeEvent; A.evList=function(){ return EVENTS.map(function(e){return e.t}) };
 A.snack=snack; A.trinkets=function(){ return (S.trinkets||[]) }; A.lootPool=function(q){ return POOL[q].map(function(p){return p.k}) };
-A.dunEnter=dunEnter; A.dunChoice=dunChoice; A.dunClose=dunClose; A.stallBuy=stallBuy; A.sell=sell; A.cancelAsk=cancelAsk; A.cancelSeg=cancelSeg; A.toolUse=toolUse; A.cityBuy=cityBuy; A.citySlot=citySlot; A.citySet=citySet; A.cityClear=cityClear; A.cityPark=cityPark; A.toolAdd=toolAdd; A.tools=function(){ return TOOLS };
+A.dunEnter=dunEnter; A.dunChoice=dunChoice; A.dunClose=dunClose; A.dunDeep=dunDeep; A.dunLeave=dunLeave; A.openShop=openShop; A.stallBuy=stallBuy; A.sell=sell; A.cancelAsk=cancelAsk; A.cancelSeg=cancelSeg; A.toolUse=toolUse; A.cityBuy=cityBuy; A.citySlot=citySlot; A.citySet=citySet; A.cityClear=cityClear; A.cityPark=cityPark; A.toolAdd=toolAdd; A.tools=function(){ return TOOLS };
 
 /* ---------- 启动 ---------- */
 S=load();
