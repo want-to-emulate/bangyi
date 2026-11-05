@@ -1062,58 +1062,91 @@ function phaseOf(){
   return 'night';
 }
 function wheelAt(x,r,drv){
+  var tread='';
+  for(var i=0;i<4;i++){
+    var a=i*Math.PI/2+0.4;
+    tread+='<line x1="'+(x+Math.cos(a)*r*0.74).toFixed(1)+'" y1="'+(140+Math.sin(a)*r*0.74).toFixed(1)
+      +'" x2="'+(x+Math.cos(a)*r*0.96).toFixed(1)+'" y2="'+(140+Math.sin(a)*r*0.96).toFixed(1)
+      +'" stroke="rgba(150,160,175,.30)" stroke-width="1.1"/>';
+  }
   return '<g class="wh'+(drv?' spin':'')+'" style="transform-box:view-box;transform-origin:'+x+'px 140px">'
-   +'<circle cx="'+x+'" cy="140" r="'+r+'" fill="#090b0e" stroke="#3c4653" stroke-width="2.2"/>'
-   +'<circle cx="'+x+'" cy="140" r="'+(r*0.42).toFixed(1)+'" fill="#6b7787"/>'
-   +'<circle cx="'+x+'" cy="140" r="'+(r*0.14).toFixed(1)+'" fill="#0d1014"/></g>';
+   +'<circle cx="'+x+'" cy="140" r="'+r+'" fill="#0a0c10" stroke="#2c3541" stroke-width="2"/>'
+   +tread
+   +'<circle cx="'+x+'" cy="140" r="'+(r*0.46).toFixed(1)+'" fill="#7f8c9d"/>'
+   +'<circle cx="'+x+'" cy="140" r="'+(r*0.30).toFixed(1)+'" fill="#616e7f"/>'
+   +'<circle cx="'+x+'" cy="140" r="'+(r*0.12).toFixed(1)+'" fill="#161c24"/></g>';
 }
 function carSVG(type,lvl,drv){
-  var B='#3f4a58', B2='#2b333d', G='#a9cbe6', D='rgba(0,0,0,.28)';
+  var B='#46525f', B2='#333c47', BH='rgba(255,255,255,.14)', SH='rgba(0,0,0,.32)', G='#a9cbe6';
   var body='', glass='', trim='', roof=106, wx=[0,0], wr=10;
+
   if(type==='rv'){
     roof=92;
-    body='<path d="M112,140 L112,102 Q112,92 122,92 L220,92 L246,124 L246,140 Z" fill="'+B+'"/>';
-    glass='<rect x="126" y="102" width="70" height="16" rx="3" fill="'+G+'" opacity=".82"/>'
-        + '<path d="M207,100 L225,100 L242,124 L207,124 Z" fill="'+G+'" opacity=".60"/>';
-    trim='<rect x="112" y="131" width="134" height="3" fill="'+D+'"/>'
-       + '<line x1="203" y1="119" x2="203" y2="137" stroke="'+D+'" stroke-width="1.5"/>';
-    wx=[144,216]; wr=11;
+    body='<path d="M112,140 L112,102 Q112,92 122,92 L220,92 L246,124 L246,140 Z" fill="'+B+'"/>'
+      +'<path d="M112,102 Q112,92 122,92 L220,92" stroke="'+BH+'" stroke-width="2.2" fill="none"/>'
+      +'<rect x="112" y="133" width="134" height="7" fill="'+SH+'"/>';
+    glass='<rect x="126" y="100" width="72" height="17" rx="3" fill="'+G+'" opacity=".86"/>'
+      +'<path d="M130,102 L160,102 L152,114 L130,114 Z" fill="rgba(255,255,255,.24)"/>'
+      +'<path d="M208,98 L225,98 L242,124 L208,124 Z" fill="'+G+'" opacity=".60"/>';
+    trim='<line x1="204" y1="96" x2="204" y2="132" stroke="rgba(0,0,0,.26)" stroke-width="1.5"/>'
+      +'<rect x="188" y="120" width="10" height="2.4" rx="1.2" fill="rgba(255,255,255,.35)"/>'
+      +'<rect x="240" y="124" width="6" height="11" rx="2.5" fill="#29313b"/>'
+      +'<circle cx="241" cy="127" r="2.2" fill="#ffe6ad" opacity=".85"/>';
+    wx=[146,218]; wr=11;
   } else if(type==='van'){
     roof=106;
-    body='<path d="M118,140 L118,114 Q118,106 126,106 L204,106 L230,128 L230,140 Z" fill="'+B+'"/>';
-    glass='<rect x="130" y="112" width="42" height="17" rx="3" fill="'+G+'" opacity=".82"/>'
-        + '<path d="M186,111 L203,111 L223,131 L186,131 Z" fill="'+G+'" opacity=".60"/>';
-    trim='<rect x="118" y="131" width="112" height="3" fill="'+D+'"/>';
-    wx=[144,208]; wr=10.5;
+    body='<path d="M118,140 L118,114 Q118,106 126,106 L204,106 L230,128 L230,140 Z" fill="'+B+'"/>'
+      +'<path d="M118,114 Q118,106 126,106 L204,106" stroke="'+BH+'" stroke-width="2.2" fill="none"/>'
+      +'<rect x="118" y="133" width="112" height="7" fill="'+SH+'"/>';
+    glass='<rect x="130" y="112" width="42" height="17" rx="3" fill="'+G+'" opacity=".86"/>'
+      +'<path d="M133,114 L159,114 L153,125 L133,125 Z" fill="rgba(255,255,255,.24)"/>'
+      +'<path d="M186,110 L204,110 L224,130 L186,130 Z" fill="'+G+'" opacity=".60"/>';
+    trim='<line x1="177" y1="110" x2="177" y2="130" stroke="rgba(0,0,0,.26)" stroke-width="1.4"/>'
+      +'<rect x="164" y="120" width="9" height="2.4" rx="1.2" fill="rgba(255,255,255,.35)"/>'
+      +'<rect x="225" y="128" width="5" height="9" rx="2" fill="#29313b"/>'
+      +'<circle cx="226" cy="130" r="2" fill="#ffe6ad" opacity=".8"/>';
+    wx=[144,207]; wr=10.5;
   } else if(type==='pickup'){
     roof=106;
-    body='<rect x="114" y="121" width="50" height="19" rx="3" fill="'+B2+'"/>'
-        +'<path d="M164,140 L164,116 Q164,106 174,106 L198,106 L222,130 L222,140 Z" fill="'+B+'"/>';
-    glass='<rect x="174" y="111" width="21" height="14" rx="3" fill="'+G+'" opacity=".82"/>'
-        + '<path d="M197,109 L206,109 L220,127 L197,127 Z" fill="'+G+'" opacity=".60"/>';
-    trim='<rect x="114" y="135" width="108" height="3" fill="'+D+'"/>';
-    wx=[150,206]; wr=10;
+    body='<rect x="112" y="120" width="54" height="20" rx="3" fill="'+B2+'"/>'
+      +'<rect x="112" y="120" width="54" height="3" rx="1.5" fill="rgba(255,255,255,.10)"/>'
+      +'<path d="M164,140 L164,116 Q164,106 174,106 L198,106 L222,130 L222,140 Z" fill="'+B+'"/>'
+      +'<path d="M164,116 Q164,106 174,106 L198,106" stroke="'+BH+'" stroke-width="2.2" fill="none"/>'
+      +'<rect x="112" y="135" width="110" height="5" fill="'+SH+'"/>';
+    glass='<rect x="174" y="111" width="21" height="14" rx="3" fill="'+G+'" opacity=".86"/>'
+      +'<path d="M176,113 L192,113 L188,123 L176,123 Z" fill="rgba(255,255,255,.22)"/>'
+      +'<path d="M197,109 L206,109 L220,127 L197,127 Z" fill="'+G+'" opacity=".60"/>';
+    trim='<line x1="195" y1="108" x2="195" y2="128" stroke="rgba(0,0,0,.26)" stroke-width="1.4"/>'
+      +'<rect x="218" y="128" width="5" height="9" rx="2" fill="#29313b"/>'
+      +'<circle cx="219" cy="130" r="2" fill="#ffe6ad" opacity=".8"/>';
+    wx=[148,204]; wr=10;
   } else {
     roof=112;
     body='<rect x="163" y="118" width="31" height="14" rx="7" fill="'+B2+'"/>'
-        +'<rect x="165" y="111" width="15" height="6" rx="3" fill="#1e262f"/>'
-        +'<path d="M192,127 L201,112" stroke="'+B+'" stroke-width="4.5" stroke-linecap="round"/>'
-        +'<path d="M195,110 L209,107" stroke="'+B+'" stroke-width="3.2" stroke-linecap="round"/>'
-        +'<circle cx="206" cy="107" r="3.2" fill="#ffe9b8" opacity=".85"/>';
+      +'<rect x="165" y="111" width="15" height="6" rx="3" fill="#1e262f"/>'
+      +'<path d="M192,127 L201,112" stroke="'+B+'" stroke-width="4.5" stroke-linecap="round"/>'
+      +'<path d="M195,110 L209,107" stroke="'+B+'" stroke-width="3.2" stroke-linecap="round"/>';
+    trim='<circle cx="206" cy="108" r="3.4" fill="#ffe9b8" opacity=".9"/>'
+      +'<circle cx="206" cy="108" r="7" fill="url(#hlg)" opacity=".55"/>'
+      +'<rect x="166" y="124" width="10" height="3" rx="1.5" fill="rgba(255,255,255,.16)"/>';
     wx=[158,200]; wr=9;
   }
   var up='';
-  if(lvl>=2&&type!=='moto') up+='<rect x="'+(type==='pickup'?122:130)+'" y="'+(roof-9)+'" width="'+(type==='pickup'?80:72)+'" height="4" rx="2" fill="#59667a"/>';
-  if(lvl>=4&&type!=='moto') up+='<rect x="'+(type==='pickup'?186:196)+'" y="'+(roof-12)+'" width="22" height="4" rx="2" fill="#ffcf87" opacity=".9"/>';
-  return body+glass+trim+up
-   +(lvl>=5?'<path d="M'+(type==='moto'?152:118)+',126 L'+(type==='moto'?198:230)+',126" stroke="rgba(255,179,71,.40)" stroke-width="3" stroke-dasharray="7 9"/>':'')
+  if(lvl>=2&&type!=='moto') up+='<rect x="'+(type==='pickup'?118:130)+'" y="'+(roof-9)+'" width="'+(type==='pickup'?74:72)+'" height="4" rx="2" fill="#5b687b"/>';
+  if(lvl>=4&&type!=='moto') up+='<rect x="'+(type==='pickup'?184:196)+'" y="'+(roof-12)+'" width="22" height="4" rx="2" fill="#ffcf87" opacity=".9"/>';
+  var arch='';
+  for(var i=0;i<2;i++){
+    arch+='<rect x="'+(wx[i]-wr-2.5)+'" y="'+(128)+'" width="'+(wr*2+5)+'" height="14" rx="4" fill="rgba(0,0,0,.34)"/>';
+  }
+  return arch+body+glass+trim+up
+   +(lvl>=5?'<path d="M'+(type==='moto'?152:118)+',126 L'+(type==='moto'?198:230)+',126" stroke="rgba(255,179,71,.42)" stroke-width="3" stroke-dasharray="7 9"/>':'')
    +wheelAt(wx[0],wr,drv)+wheelAt(wx[1],wr,drv);
 }
 function dustHTML(drv){
   if(!drv) return '';
   var d='';
-  for(var i=0;i<4;i++){
-    d+='<circle class="dust d'+i+'" cx="'+(96-i*9)+'" cy="'+(136-i*3)+'" r="'+(2+i*1.6)+'" fill="#cbb79a" opacity=".22"/>';
+  for(var i=0;i<5;i++){
+    d+='<circle class="dust d'+i+'" cx="'+(100-i*10)+'" cy="'+(137-i*2.5)+'" r="'+(1.6+i*1.5)+'" fill="#cbb79a" opacity="'+(0.26-i*0.03).toFixed(2)+'"/>';
   }
   return d;
 }
@@ -1121,74 +1154,97 @@ function dustHTML(drv){
 function sceneSVG(){
   var zi=zoneOf(S.km), z=ZONES[zi], ph=phaseOf(), P=SKYP[ph], drv=!!T;
   var hue=z.hue;
-  var c1 = ph==='day' ? 'hsl(203,30%,70%)' : 'hsl('+hue+','+P.a[1]+'%,'+P.a[0]+'%)';
-  var c2 = ph==='day' ? 'hsl(34,34%,78%)' : 'hsl('+((hue+8)%360)+','+P.b[1]+'%,'+P.b[0]+'%)';
-  var roadc='hsl('+hue+',11%,'+(ph==='night'?12:16)+'%)';
+  var c1 = ph==='day' ? 'hsl(205,34%,66%)' : 'hsl('+hue+','+P.a[1]+'%,'+P.a[0]+'%)';
+  var c1b = ph==='day' ? 'hsl(200,26%,74%)' : 'hsl('+((hue+4)%360)+','+Math.max(10,P.a[1]-6)+'%,'+(P.a[0]+10)+'%)';
+  var c2 = ph==='day' ? 'hsl(36,40%,80%)' : 'hsl('+((hue+10)%360)+','+P.b[1]+'%,'+P.b[0]+'%)';
+  var roadc='hsl('+hue+',10%,'+(ph==='night'?9:14)+'%)';
   var stars='';
-  if(P.star)for(var i=0;i<34;i++){
-    stars+='<circle cx="'+((i*53+11)%360)+'" cy="'+((i*37+9)%150)+'" r="'+(i%5?0.55:1.05)+'" fill="#fff" opacity="'+((i%6)*0.05+0.13).toFixed(2)+'"/>';
+  if(P.star)for(var i=0;i<40;i++){
+    var sr=(i%7===0?1.15:0.6);
+    stars+='<circle cx="'+((i*53+11)%360)+'" cy="'+((i*37+9)%170)+'" r="'+sr+'" fill="#fff" opacity="'+((i%6)*0.045+0.12).toFixed(2)+'"/>';
   }
   var sy = ph==='dusk'?96:ph==='dawn'?112:ph==='night'?54:64;
-  var sun='<circle cx="286" cy="'+sy+'" r="'+(P.sr*3.8)+'" fill="url(#glow)"/>'
-    +'<circle cx="286" cy="'+sy+'" r="'+P.sr+'" fill="'+P.sun+'"'+(ph==='night'?' opacity=".9"':'')+'/>';
-  var cloud='';
-  [[66,58,26,7,.10],[152,38,34,8,.07],[248,66,30,7,.09],[318,44,22,6,.06]].forEach(function(c){
-    cloud+='<ellipse cx="'+c[0]+'" cy="'+c[1]+'" rx="'+c[2]+'" ry="'+c[3]+'" fill="rgba(255,255,255,'+c[4]+')"/>'
-      +'<ellipse cx="'+(c[0]+c[2]*0.5)+'" cy="'+(c[1]-c[3]*0.7)+'" rx="'+(c[2]*0.55)+'" ry="'+(c[3]*0.8)+'" fill="rgba(255,255,255,'+(c[4]*0.8)+')"/>';
-  });
+  var sun='<circle cx="286" cy="'+sy+'" r="'+(P.sr*4.6)+'" fill="url(#glow)"/>'
+    +'<circle cx="286" cy="'+sy+'" r="'+P.sr+'" fill="'+P.sun+'"'+(ph==='night'?' opacity=".92"':'')+'/>';
   var pole='';
-  [[22,0.9],[330,1.05]].forEach(function(p){
-    var x=p[0],k=p[1];
-    pole+='<g opacity="'+(ph==='night'?.85:.7)+'">'
-      +'<rect x="'+(x-1.2*k)+'" y="'+(130-6)+'" width="'+(2.4*k)+'" height="62" fill="rgba(0,0,0,.55)"/>'
-      +'<rect x="'+(x-11*k)+'" y="'+(132)+'" width="'+(22*k)+'" height="'+(2.4*k)+'" fill="rgba(0,0,0,.55)"/>'
-      +'<rect x="'+(x-9*k)+'" y="'+(136)+'" width="'+(3*k)+'" height="'+(2*k)+'" fill="rgba(0,0,0,.4)"/>'
-      +'<rect x="'+(x+6*k)+'" y="'+(136)+'" width="'+(3*k)+'" height="'+(2*k)+'" fill="rgba(0,0,0,.4)"/>'
+  [[22,0.9,0.85],[330,1.05,0.85]].forEach(function(p){
+    var x=p[0],k=p[1],o=p[2];
+    pole+='<g opacity="'+o+'">'
+      +'<rect x="'+(x-1.3*k)+'" y="'+(124)+'" width="'+(2.6*k)+'" height="68" fill="#0d0f14"/>'
+      +'<rect x="'+(x-13*k)+'" y="'+(129)+'" width="'+(26*k)+'" height="'+(2.6*k)+'" rx="1" fill="#0d0f14"/>'
+      +'<rect x="'+(x-13*k)+'" y="'+(124)+'" width="'+(2*k)+'" height="6" fill="#151922"/>'
+      +'<rect x="'+(x+11*k)+'" y="'+(124)+'" width="'+(2*k)+'" height="6" fill="#151922"/>'
+      +'<rect x="'+(x-9*k)+'" y="'+(132)+'" width="'+(3.4*k)+'" height="'+(3*k)+'" rx="1" fill="#1b2029"/>'
+      +'<rect x="'+(x+6*k)+'" y="'+(132)+'" width="'+(3.4*k)+'" height="'+(3*k)+'" rx="1" fill="#1b2029"/>'
       +'</g>';
   });
-  var sign='<g opacity="'+(ph==='night'?.8:.75)+'">'
-    +'<rect x="86" y="160" width="2.6" height="46" fill="rgba(0,0,0,.55)"/>'
-    +'<rect x="74" y="146" width="40" height="20" rx="3" fill="#1f6b5a" stroke="rgba(255,255,255,.28)" stroke-width="1.2"/>'
-    +'<text x="94" y="162" font-size="7.5" text-anchor="middle" fill="rgba(255,255,255,.88)" font-family="ui-monospace,Consolas,monospace">K'+Math.round(S.km)+'</text>'
+  var wire='<g opacity="'+(ph==='night'?.55:.42)+'" fill="none" stroke="#0d0f14" stroke-width="0.9">'
+    +'<path d="M9,134 Q176,150 344,136"/>'
+    +'<path d="M18,129 Q176,144 338,131"/>'
+    +'</g>';
+  var sign='<g opacity="'+(ph==='night'?.85:.8)+'">'
+    +'<rect x="88" y="186" width="2.8" height="20" fill="rgba(0,0,0,.5)"/>'
+    +'<rect x="72" y="164" width="46" height="24" rx="4" fill="#1c6b58" stroke="rgba(255,255,255,.42)" stroke-width="1.3"/>'
+    +'<rect x="75" y="167" width="40" height="18" rx="2.5" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="1"/>'
+    +'<text x="95" y="174" font-size="6.4" text-anchor="middle" fill="rgba(255,255,255,.72)" font-family="ui-monospace,Consolas,monospace">K '+Math.round(S.km)+'</text>'
+    +'<path d="M84,181 h14 l-3,3 h-11 z" fill="rgba(255,255,255,.55)"/>'
     +'</g>';
   var birds='';
   if(ph==='day'||ph==='dawn'){
-    birds='<g class="birds" opacity=".55">'
-      +'<path d="M60,96 q4,-4 8,0 q4,-4 8,0" stroke="#1b2430" stroke-width="1.4" fill="none"/>'
-      +'<path d="M88,84 q3.4,-3.4 6.8,0 q3.4,-3.4 6.8,0" stroke="#1b2430" stroke-width="1.2" fill="none"/>'
-      +'<path d="M44,110 q3,-3 6,0 q3,-3 6,0" stroke="#1b2430" stroke-width="1.1" fill="none"/>'
+    birds='<g class="birds" opacity=".5">'
+      +'<path d="M60,96 q4,-4 8,0 q4,-4 8,0" stroke="#18202b" stroke-width="1.4" fill="none"/>'
+      +'<path d="M88,84 q3.4,-3.4 6.8,0 q3.4,-3.4 6.8,0" stroke="#18202b" stroke-width="1.2" fill="none"/>'
+      +'<path d="M44,110 q3,-3 6,0 q3,-3 6,0" stroke="#18202b" stroke-width="1.1" fill="none"/>'
       +'</g>';
   }
   var beam=(ph==='night'||ph==='dusk')
-    ? '<path d="M232,242 L360,212 L360,280 L232,272 Z" fill="url(#beam)" opacity=".26"/>':'';
-  var grass='<path d="M0,340 L0,318 Q14,326 24,314 Q34,326 46,318 L46,340 Z" fill="rgba(0,0,0,.35)"/>'
-    +'<path d="M360,340 L360,322 Q346,330 336,318 Q326,330 314,322 L314,340 Z" fill="rgba(0,0,0,.35)"/>';
+    ? '<path d="M258,262 L360,232 L360,292 L258,278 Z" fill="url(#beam)" opacity=".30"/>':'';
+  var ridge2='<g transform="translate(0,80)" opacity="'+(ph==='day'?.16:.22)+'">'
+    +'<path d="'+RIDGE[zi]+'" transform="scale(1,0.7) translate(0,44)" fill="#000"/></g>';
+  var gravel='';
+  for(var i=0;i<26;i++){
+    var gx=((i*97+31)%360), gy=300+((i*53)%34);
+    gravel+='<circle cx="'+gx+'" cy="'+gy+'" r="'+(0.5+(i%3)*0.35)+'" fill="rgba(255,255,255,.055)"/>';
+  }
+  var grass='<path d="M0,340 L0,314 Q16,324 26,310 Q36,324 48,314 L48,340 Z" fill="rgba(0,0,0,.42)"/>'
+    +'<path d="M360,340 L360,318 Q344,328 334,314 Q324,328 312,318 L312,340 Z" fill="rgba(0,0,0,.42)"/>';
   return '<svg viewBox="0 0 360 340" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%">'
    +'<defs>'
-   +'<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+c1+'"/><stop offset="1" stop-color="'+c2+'"/></linearGradient>'
-   +'<linearGradient id="hz" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="'+c2+'" stop-opacity=".9"/><stop offset="1" stop-color="'+c2+'" stop-opacity="0"/></linearGradient>'
-   +'<linearGradient id="beam" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffe2a8" stop-opacity=".55"/><stop offset="1" stop-color="#ffe2a8" stop-opacity="0"/></linearGradient>'
-   +'<radialGradient id="glow"><stop offset="0" stop-color="'+P.sun+'" stop-opacity="'+(P.glow*2.4).toFixed(2)+'"/><stop offset=".55" stop-color="'+P.sun+'" stop-opacity="'+(P.glow*0.7).toFixed(2)+'"/><stop offset="1" stop-color="'+P.sun+'" stop-opacity="0"/></radialGradient>'
-   +'<linearGradient id="tf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".38"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>'
-   +'<linearGradient id="bf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".55"/></linearGradient>'
-   +'<radialGradient id="vig" cx=".5" cy=".5" r=".78"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".42"/></radialGradient>'
+   +'<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">'
+   +'<stop offset="0" stop-color="'+c1+'"/><stop offset=".55" stop-color="'+c1b+'"/><stop offset="1" stop-color="'+c2+'"/></linearGradient>'
+   +'<linearGradient id="hz" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="'+c2+'" stop-opacity=".92"/><stop offset="1" stop-color="'+c2+'" stop-opacity="0"/></linearGradient>'
+   +'<linearGradient id="beam" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffe2a8" stop-opacity=".6"/><stop offset="1" stop-color="#ffe2a8" stop-opacity="0"/></linearGradient>'
+   +'<radialGradient id="glow"><stop offset="0" stop-color="'+P.sun+'" stop-opacity="'+(P.glow*2.6).toFixed(2)+'"/><stop offset=".5" stop-color="'+P.sun+'" stop-opacity="'+(P.glow*0.8).toFixed(2)+'"/><stop offset="1" stop-color="'+P.sun+'" stop-opacity="0"/></radialGradient>'
+   +'<radialGradient id="hlg"><stop offset="0" stop-color="#ffe6ad" stop-opacity=".55"/><stop offset="1" stop-color="#ffe6ad" stop-opacity="0"/></radialGradient>'
+   +'<linearGradient id="road" x1="0" y1="0" x2="0" y2="1">'
+   +'<stop offset="0" stop-color="'+roadc+'" stop-opacity=".96"/><stop offset=".35" stop-color="'+roadc+'"/><stop offset="1" stop-color="hsl('+hue+',10%,'+(ph==='night'?10:15)+'%)"/></linearGradient>'
+   +'<linearGradient id="tf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".42"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>'
+   +'<linearGradient id="bf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".46"/></linearGradient>'
+   +'<radialGradient id="vig" cx=".5" cy=".46" r=".8"><stop offset=".5" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".46"/></radialGradient>'
    +'</defs>'
    +'<rect width="360" height="340" fill="url(#sky)"/>'
    +stars+sun
-   +'<g transform="translate(0,79)"><path d="'+RIDGE[zi]+'" fill="rgba(0,0,0,'+(ph==='day'?'.26':'.40')+')"/></g>'
-   +'<rect x="0" y="158" width="360" height="48" fill="url(#hz)"/>'
+   +ridge2
+   +'<g transform="translate(0,79)"><path d="'+RIDGE[zi]+'" fill="rgba(0,0,0,'+(ph==='day'?'.28':'.46')+')"/></g>'
+   +'<rect x="0" y="150" width="360" height="56" fill="url(#hz)"/>'
    +birds
-   +pole+sign
-   +'<rect x="0" y="205" width="360" height="135" fill="'+roadc+'"/>'
-   +'<rect x="0" y="204" width="360" height="2" fill="rgba(255,255,255,.10)"/>'
-   +'<rect x="0" y="204" width="360" height="54" fill="url(#hz)" opacity=".8"/>'
-   +'<g transform="translate(0,158)"><path class="dash'+(drv?' go':'')+'" d="M0,154 H360" stroke="rgba(255,220,170,.30)" stroke-width="4" stroke-dasharray="22 26"/></g>'
+   +pole+wire+sign
+   +'<rect x="0" y="205" width="360" height="135" fill="url(#road)"/>'
+   +'<rect x="0" y="204" width="360" height="1.8" fill="rgba(255,255,255,.14)"/>'
+   +'<rect x="0" y="205" width="360" height="1.2" fill="rgba(0,0,0,.35)"/>'
+   +'<rect x="0" y="206" width="360" height="26" fill="url(#hz)" opacity=".40"/>'
+   +'<rect x="0" y="262" width="360" height="1.4" fill="rgba(255,255,255,.035)"/>'
+   +'<rect x="0" y="286" width="360" height="1.4" fill="rgba(255,255,255,.030)"/>'
+   +'<rect x="0" y="248" width="360" height="1.6" fill="rgba(255,255,255,.09)"/>'
+   +'<rect x="0" y="332" width="360" height="3" fill="rgba(255,255,255,.10)"/>'
+   +gravel
+   +'<g transform="translate(0,158)"><path class="dash'+(drv?' go':'')+'" d="M0,154 H360" stroke="rgba(255,226,176,.34)" stroke-width="4.2" stroke-dasharray="22 26"/></g>'
    +beam
-   +'<ellipse cx="180" cy="289" rx="78" ry="4.8" fill="rgba(0,0,0,.42)"/>'
-   +'<g transform="translate(0,147) translate(178,151) scale(1.14) translate(-178,-151)">'+dustHTML(drv)+'<g class="veh'+(drv?' driving':'')+'">'+carSVG(S.veh,S.lvl,drv)+'</g></g>'
+   +'<ellipse cx="178" cy="291" rx="94" ry="5.4" fill="rgba(0,0,0,.44)"/>'
+   +'<g transform="translate(0,150) translate(178,151) scale(1.34) translate(-178,-151)">'+dustHTML(drv)+'<g class="veh'+(drv?' driving':'')+'">'+carSVG(S.veh,S.lvl,drv)+'</g></g>'
    +grass
    +'<rect x="0" y="0" width="360" height="110" fill="url(#tf)"/>'
-   +'<rect x="0" y="230" width="360" height="110" fill="url(#bf)"/>'
+   +'<rect x="0" y="252" width="360" height="88" fill="url(#bf)"/>'
    +'<rect x="0" y="0" width="360" height="340" fill="url(#vig)"/>'
    +'</svg>';
 }
