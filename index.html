@@ -410,6 +410,15 @@
 .tk span{display:block;font-size:11.5px;margin-top:4px;color:#efe6d8}
 .tk em{display:block;font-style:normal;font-size:9.5px;line-height:1.4;margin-top:3px;color:var(--dim);}
 
+/* v0.12：行进时的背景视差 */
+.plx{will-change:transform}
+.plx.go{animation-name:plx;animation-timing-function:linear;animation-iteration-count:infinite}
+@keyframes plx{from{transform:translateX(0)}to{transform:translateX(-360px)}}
+.pl-far.go{animation-duration:42s}
+.pl-slow.go{animation-duration:24s}
+.pl-mid.go{animation-duration:11s}
+.pl-near.go{animation-duration:6s}
+
 /* v0.9 随机事件 */
 .cold.inf{border-color:rgba(255,120,90,.45);background:linear-gradient(180deg,rgba(255,110,80,.16),rgba(255,110,80,.06));color:#ffb4a0}
 .modal.ev .evi{font-size:26px;line-height:1;margin-bottom:10px;text-align:center}
@@ -1172,6 +1181,9 @@ function dustHTML(drv){
 function sceneSVG(){
   var zi=zoneOf(S.km), z=ZONES[zi], ph=phaseOf(), P=SKYP[ph], drv=!!T;
   var hue=z.hue;
+  function par(cls,html){
+    return '<g class="plx '+cls+(drv?' go':'')+'"><g>'+html+'</g><g transform="translate(360,0)">'+html+'</g></g>';
+  }
   var c1 = ph==='day' ? 'hsl(205,34%,66%)' : 'hsl('+hue+','+P.a[1]+'%,'+P.a[0]+'%)';
   var c1b = ph==='day' ? 'hsl(200,26%,74%)' : 'hsl('+((hue+4)%360)+','+Math.max(10,P.a[1]-6)+'%,'+(P.a[0]+10)+'%)';
   var c2 = ph==='day' ? 'hsl(36,40%,80%)' : 'hsl('+((hue+10)%360)+','+P.b[1]+'%,'+P.b[0]+'%)';
@@ -1242,11 +1254,11 @@ function sceneSVG(){
    +'</defs>'
    +'<rect width="360" height="340" fill="url(#sky)"/>'
    +stars+sun
-   +ridge2
-   +'<g transform="translate(0,79)"><path d="'+RIDGE[zi]+'" fill="rgba(0,0,0,'+(ph==='day'?'.28':'.46')+')"/></g>'
+   +par('pl-far',ridge2)
+   +par('pl-slow','<g transform="translate(0,79)"><path d="'+RIDGE[zi]+'" fill="rgba(0,0,0,'+(ph==='day'?'.28':'.46')+')"/></g>')
    +'<rect x="0" y="150" width="360" height="56" fill="url(#hz)"/>'
    +birds
-   +pole+wire+sign
+   +par('pl-mid',pole+wire)+sign
    +'<rect x="0" y="205" width="360" height="135" fill="url(#road)"/>'
    +'<rect x="0" y="204" width="360" height="1.8" fill="rgba(255,255,255,.14)"/>'
    +'<rect x="0" y="205" width="360" height="1.2" fill="rgba(0,0,0,.35)"/>'
@@ -1255,7 +1267,7 @@ function sceneSVG(){
    +'<rect x="0" y="286" width="360" height="1.4" fill="rgba(255,255,255,.030)"/>'
    +'<rect x="0" y="248" width="360" height="1.6" fill="rgba(255,255,255,.09)"/>'
    +'<rect x="0" y="332" width="360" height="3" fill="rgba(255,255,255,.10)"/>'
-   +gravel
+   +par('pl-near',gravel)
    +'<g transform="translate(0,158)"><path class="dash'+(drv?' go':'')+'" d="M0,154 H360" stroke="rgba(255,226,176,.34)" stroke-width="4.2" stroke-dasharray="22 26"/></g>'
    +beam
    +'<ellipse cx="178" cy="291" rx="94" ry="5.4" fill="rgba(0,0,0,.44)"/>'

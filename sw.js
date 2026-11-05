@@ -1,4 +1,4 @@
-const CACHE = 'bangyi-v11-6';
+const CACHE = 'bangyi-v11-7';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
