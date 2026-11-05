@@ -400,6 +400,16 @@
 .evr em{font-style:normal;font-size:11px;opacity:.45;margin-left:6px}
 .evr p{margin:3px 0 0;font-size:13px;line-height:1.65;opacity:.62}
 
+/* 捡到的小东西 */
+.tks{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+.tk{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:14px;
+  padding:10px 8px;text-align:center;opacity:.55}
+.tk.on{opacity:1;background:linear-gradient(180deg,rgba(255,176,58,.13),rgba(255,176,58,.04));
+  border-color:rgba(255,176,58,.28)}
+.tk b{display:block;font-size:19px;line-height:1.2}
+.tk span{display:block;font-size:11.5px;margin-top:4px;color:#efe6d8}
+.tk em{display:block;font-style:normal;font-size:9.5px;line-height:1.4;margin-top:3px;color:var(--dim);}
+
 /* v0.9 随机事件 */
 .cold.inf{border-color:rgba(255,120,90,.45);background:linear-gradient(180deg,rgba(255,110,80,.16),rgba(255,110,80,.06));color:#ffb4a0}
 .modal.ev .evi{font-size:26px;line-height:1;margin-bottom:10px;text-align:center}
@@ -2507,7 +2517,7 @@ var TRUNK_ICO = {
   med: '<rect x="-8" y="-6" width="16" height="12" rx="3" fill="rgba(255,143,143,.18)" stroke="#ff8f8f" stroke-width="1.4"/><circle cx="-4" cy="0" r="1.6" fill="#ff8f8f"/><circle cx="0" cy="0" r="1.6" fill="#ff8f8f"/><circle cx="4" cy="0" r="1.6" fill="#ff8f8f"/>'
 };
 function trunkUsed(){
-  var u=S.inv.water+S.inv.wash+S.inv.biscuit+S.inv.coffee+S.inv.med;
+  var u=0; INV_ORDER.forEach(function(k){ u+=S.inv[k]||0 });
   if(has('fridge')) u-=S.inv.water;
   return u;
 }
@@ -2516,7 +2526,7 @@ function trunkSVG(){
   var rows=Math.max(1,Math.ceil(max/cols));
   var W=360, H=rows*46+22, cw=44, gap=(W-24-cols*cw)/(cols-1);
   var order=[], k;
-  ['water','wash','biscuit','coffee','med'].forEach(function(id){
+  INV_ORDER.forEach(function(id){
     var n=S.inv[id]||0;
     if(id==='water'&&has('fridge')) n=0;
     for(var i=0;i<n;i++) order.push(id);
@@ -2551,7 +2561,7 @@ function renderCar(){
 
   h+='<div class="panel"><p class="ptitle">后 备 箱</p>';
   var any=false;
-  ['water','wash','biscuit','coffee','med'].forEach(function(k){
+  INV_ORDER.forEach(function(k){
     if(S.inv[k]>0){ any=true;
       h+='<div class="item"><div class="n">'+NAME[k]+'</div><div class="c">×'+S.inv[k]+'</div>'
        +'<button class="mini" onclick="A.use(\''+k+'\')">用</button></div>';
@@ -2569,16 +2579,125 @@ function renderCar(){
   }
 
   h+='<div class="panel"><p class="ptitle">箱 子 里 能 开 出</p><div class="dp">';
-  h+='<div class="dpr"><b class="q0">白</b><span>水 ×1</span></div>';
-  h+='<div class="dpr"><b class="q1">绿</b><span>水 ×2</span></div>';
-  h+='<div class="dpr"><b class="q2">蓝</b><span>水 ×3 · 饼干 ×1</span><em>家具 15% · 改装件 8%</em></div>';
-  h+='<div class="dpr"><b class="q3">紫</b><span>水 ×5 · 洗漱包 ×1</span><em>家具 40% · 改装件 30%</em></div>';
-  h+='<div class="dpr"><b class="q4">金</b><span>水 ×5 · 洗漱包 ×2 · 药 ×1</span><em>家具 100% · 改装件 100%</em></div>';
-  h+='</div><div class="hint" style="text-align:left">皮卡每箱多 1 瓶水。攒着一起开，每多一个 +5% 品质（最多 9 个）。<br>'
+  for(var q=0;q<5;q++){
+    var names=POOL[q].map(function(p){ return LOOT[p.k].n }).join(' · ');
+    var extra = q<2 ? '' : ('家具 '+(q===2?'15%':q===3?'40%':'100%')+' · 改装件 '+(q===2?'8%':q===3?'30%':'100%'));
+    h+='<div class="dpr"><b class="q'+q+'">'+QN[q]+'</b><span>抽 '+DRAWS[q]+' 件，从这些里随机：'+names+'</span>'
+     +'<em>'+extra+'</em></div>';
+  }
+  h+='</div><div class="hint" style="text-align:left">同一档的箱子开出来也不一样——颜色决定件数，运气决定里面是什么。<br>'
+   +'皮卡每箱多 1 瓶水。攒着一起开，每多一个 +5% 品质（最多 9 个）。<br>'
    +'改装件不止车间能做：这里能翻出来，塔通关给 1 件，服务区 25 点也能买。</div></div>';
+
+  h+=trinketPanel();
 
   return h;
 }
+
+/* ---------- 掉落物品：从「一箱水」变成一堆杂东西 ---------- */
+var INV_ORDER = ['water','soup','biscuit','energy','coffee','wash','wipe','med','eye'];
+
+var LOOT = {
+  water:  { n:'瓶装水',   s:'渴 +40' },
+  soup:   { n:'速溶汤',   s:'饱 +25 · 渴 +12' },
+  biscuit:{ n:'饼干',     s:'饱 +35' },
+  energy: { n:'能量饮料', s:'精 +30 · 卫生 −8' },
+  coffee: { n:'咖啡',     s:'精 +25 · 饱 −10' },
+  wash:   { n:'洗漱包',   s:'卫生 +45' },
+  wipe:   { n:'湿巾',     s:'卫生 +12' },
+  med:    { n:'感冒药',   s:'治感冒' },
+  eye:    { n:'眼罩',     s:'精 +12' }
+};
+
+NAME.water = '瓶装水'; NAME.soup = '速溶汤'; NAME.biscuit = '饼干';
+NAME.energy = '能量饮料'; NAME.coffee = '咖啡'; NAME.wash = '洗漱包';
+NAME.wipe = '湿巾'; NAME.med = '感冒药'; NAME.eye = '眼罩';
+
+TRUNK_ICO.soup = '<path d="M-9,-3 h18 l-2.4,10 a3 3 0 0 1 -3,2.6 h-7.2 a3 3 0 0 1 -3,-2.6 z" fill="rgba(255,180,120,.18)" stroke="#ffb478" stroke-width="1.4"/><path d="M-6,-3 c1.4,-4 4,-4 5.4,0" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="1.2"/><path d="M-10,-3 h20" stroke="#ffb478" stroke-width="1.4"/>';
+TRUNK_ICO.energy = '<path d="M-2,-12 h6 l-4,7 h5 l-9,11 3,-8 h-5 z" fill="rgba(140,230,190,.20)" stroke="#8ce6be" stroke-width="1.3"/>';
+TRUNK_ICO.wipe = '<rect x="-8" y="-6" width="16" height="12" rx="3" fill="rgba(200,220,255,.16)" stroke="#c8dcff" stroke-width="1.4"/><path d="M-4,-2 h8" stroke="rgba(255,255,255,.5)" stroke-width="1.2"/><path d="M-4,2 h5" stroke="rgba(255,255,255,.35)" stroke-width="1.2"/>';
+TRUNK_ICO.eye = '<path d="M-9,0 a9,6 0 0 1 18,0 a9,6 0 0 1 -18,0 z" fill="rgba(180,190,255,.16)" stroke="#b4beff" stroke-width="1.3"/><circle cx="0" cy="0" r="2.6" fill="#b4beff"/>';
+
+/* 每一档从池子里抽几件；数字越大件数越多、好东西越多 */
+var POOL = [
+  [ {k:'water',w:40},{k:'wipe',w:30},{k:'biscuit',w:20},{k:'soup',w:10} ],
+  [ {k:'water',w:30},{k:'biscuit',w:25},{k:'soup',w:20},{k:'wipe',w:15},{k:'coffee',w:10},{k:'eye',w:8} ],
+  [ {k:'water',w:25},{k:'biscuit',w:20},{k:'soup',w:20},{k:'coffee',w:15},{k:'wash',w:10},{k:'energy',w:10} ],
+  [ {k:'water',w:20},{k:'soup',w:20},{k:'wash',w:20},{k:'coffee',w:15},{k:'energy',w:15},{k:'med',w:10},{k:'eye',w:7} ],
+  [ {k:'wash',w:25},{k:'med',w:20},{k:'soup',w:15},{k:'energy',w:15},{k:'coffee',w:15},{k:'water',w:10} ]
+];
+var DRAWS = [1,2,3,4,5];
+
+function pickLoot(q){
+  var pool = POOL[q], tot = 0, i;
+  for(i=0;i<pool.length;i++) tot += pool[i].w;
+  var r = rnd()*tot;
+  for(i=0;i<pool.length;i++){ r -= pool[i].w; if(r<=0) return pool[i].k }
+  return pool[pool.length-1].k;
+}
+
+function supplyFor(q){
+  var out = {}, n = DRAWS[q];
+  for(var i=0;i<n;i++){ var k = pickLoot(q); out[k] = (out[k]||0)+1 }
+  if(S.veh === 'pickup') out.water = (out.water||0)+1;
+  return out;
+}
+
+/* 小东西：不消耗、不占格、能凑一套 */
+var TRINKETS = [
+  {id:'stamp', ic:'📮', n:'旧邮票', d:'边角卷了，邮戳是 1998 年'},
+  {id:'tape',  ic:'📼', n:'磁带', d:'A 面手写着「夜车」'},
+  {id:'ticket',ic:'🎫', n:'硬座车票', d:'K 字头，到站栏空着'},
+  {id:'key',   ic:'🔑', n:'钥匙扣', d:'钥匙早没了，扣还在'},
+  {id:'screw', ic:'🔩', n:'六角螺丝', d:'M3×8，不知道从哪儿松的'},
+  {id:'map',   ic:'🗺',  n:'地图残页', d:'只剩右下角那一片'},
+  {id:'tag',   ic:'🏷',  n:'加油站贴纸', d:'一只竖大拇指的卡通油枪'},
+  {id:'coin',  ic:'🪙',  n:'一枚硬币', d:'磨得看不出年份'},
+  {id:'btn',   ic:'🧵',  n:'备用纽扣', d:'和你的外套不是一套'},
+  {id:'gum',   ic:'🍬',  n:'口香糖纸', d:'仔细压平过'},
+  {id:'candle',ic:'🕯',  n:'半截蜡烛', d:'灯芯还是黑的'},
+  {id:'card',  ic:'📇',  n:'手写名片', d:'只写了名字和一串呼机号'}
+];
+
+function trinketCount(){
+  return (S.trinkets||[]).length;
+}
+
+function trinketRoll(q){
+  var p = [.06,.10,.18,.30,.55][q];
+  if(rnd() > p) return null;
+  if(!S.trinkets) S.trinkets = [];
+  var left = TRINKETS.filter(function(t){ return S.trinkets.indexOf(t.id) < 0 });
+  if(!left.length){ S.points += 3; return '一样的小东西（+3 点）' }
+  var t = left[Math.floor(rnd()*left.length)];
+  S.trinkets.push(t.id);
+  return t.ic + ' ' + t.n;
+}
+
+function snack(k){
+  if(!S.inv[k]) return toast('没有了');
+  S.inv[k]--;
+  if(k==='soup'){ step('full',25); step('thirst',12); toast('速溶汤。热的。') }
+  else if(k==='energy'){ step('nrg',30); step('hyg',-8); toast('能量饮料。心跳有点快。') }
+  else if(k==='wipe'){ step('hyg',12); toast('擦了把脸。') }
+  else if(k==='eye'){ step('nrg',12); toast('戴上眼罩眯了一会儿。') }
+  save(); render();
+}
+
+function trinketPanel(){
+  if(!S.trinkets || !S.trinkets.length) return '';
+  var h = '<div class="panel"><p class="ptitle">捡 到 的 小 东 西</p><div class="tks">';
+  TRINKETS.forEach(function(t){
+    var own = S.trinkets.indexOf(t.id) >= 0;
+    h += '<div class="tk' + (own ? ' on' : '') + '"><b>' + (own ? t.ic : '·') + '</b>'
+       + '<span>' + (own ? t.n : '——') + '</span>'
+       + (own ? '<em>' + t.d + '</em>' : '') + '</div>';
+  });
+  h += '</div><div class="hint" style="text-align:left">' + trinketCount() + '/' + TRINKETS.length
+     + ' 件。开箱子会掉，蓝色以上才比较容易遇见。凑齐不额外给奖励——它们只是你确实捡过的东西。</div></div>';
+  return h;
+}
+
 function renderGarage(){
   var v=VEH[S.veh], L=LV[S.lvl], nx=LV[S.lvl+1], ni=nowInfo();
   var h=roomHTML();
@@ -2746,7 +2865,7 @@ window.A={
     if(!S.boxes) return;
     var n=Math.min(9,S.boxes), bonus=Math.min(9,n)-1;
     S.boxes-=n;
-    var parts=0;
+    var parts=0, trs=[];
     for(var i=0;i<n;i++){
       var q=rollQ(Math.max(0,Math.round(bonus*.5)));
       var sup=supplyFor(q);
@@ -2755,9 +2874,10 @@ window.A={
       if(fe&&fe!=='dup') S.furn.push(fe);
       else if(fe==='dup') S.points+=5;
       if(partRoll(q)) parts++;
+      var tr=trinketRoll(q); if(tr) trs.push(tr);
     }
     if(parts) S.mods+=parts;
-    toast('开了 '+n+' 个箱子'+(parts?'，翻出 '+parts+' 件改装件':''));
+    toast('开了 '+n+' 个箱子'+(parts?'，翻出 '+parts+' 件改装件':'')+(trs.length?'，捡到 '+trs[trs.length-1]:''));
     save(); render();
   },
   use:function(k){
@@ -2766,6 +2886,7 @@ window.A={
     if(k==='biscuit') return eat();
     if(k==='coffee') return coffee();
     if(k==='med') return med();
+    if(k==='soup'||k==='energy'||k==='wipe'||k==='eye') return snack(k);
   },
   setup:function(){ modal(renderSetup(),function(){}); },
   closeSetup:closeModal,
@@ -2799,6 +2920,7 @@ window.A={
 function sfxToggle(){ S.sfx = sfxOn() ? 0 : 1; save(); render(); snd('tap') }
 A.towerSel=towerSel; A.towerStart=towerStart; A.towerEnter=towerEnter; A.towerCard=towerCard; A.towerRule=towerRule; A.towerNote=towerNote; A.sfxToggle=sfxToggle;
 A.evPick=evPick; A.calm=calm; A.showEv=function(){ if(S.curEv!=null) showEvent(S.curEv) }; A.raw=function(){ return S }; A.maybeEv=maybeEvent; A.evList=function(){ return EVENTS.map(function(e){return e.t}) };
+A.snack=snack; A.trinkets=function(){ return (S.trinkets||[]) }; A.lootPool=function(q){ return POOL[q].map(function(p){return p.k}) };
 A.dunEnter=dunEnter; A.dunChoice=dunChoice; A.dunClose=dunClose; A.stallBuy=stallBuy; A.sell=sell;
 
 /* ---------- 启动 ---------- */
