@@ -1,4 +1,4 @@
-const CACHE = 'bangyi-v11-1';
+const CACHE = 'bangyi-v11-2';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -19,6 +19,17 @@ self.addEventListener('fetch', e => {
   let u;
   try { u = new URL(req.url) } catch (_) { return }
   if (u.origin !== location.origin) return;
+  // 页面本体：先问网络，拿不到再用缓存。这样一刷新就是新版
+  if (req.mode === 'navigate') {
+    e.respondWith(
+      fetch(req).then(res => {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
+        return res;
+      }).catch(() => caches.match(req).then(hit => hit || caches.match('./index.html')))
+    );
+    return;
+  }
   e.respondWith(
     caches.match(req).then(hit => {
       if (hit) return hit;
@@ -30,4 +41,3 @@ self.addEventListener('fetch', e => {
     })
   );
 });
-

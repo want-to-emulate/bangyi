@@ -2681,9 +2681,32 @@ render();
 (function(){
   if(!('serviceWorker' in navigator)) return;
   if(location.protocol!=='https:' && location.hostname!=='localhost' && location.hostname!=='127.0.0.1') return;
+  var tip = null;
+  function showTip(){
+    if(!tip) tip = document.getElementById('updTip');
+    if(!tip) return;
+    tip.style.display = 'block';
+    var b = tip.querySelector('button');
+    if(b) b.addEventListener('click', function(){ location.reload(); });
+  }
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('./sw.js').catch(function(){});
+    navigator.serviceWorker.register('./sw.js').then(function(r){
+      r.addEventListener('updatefound', function(){
+        var w = r.installing;
+        if(!w) return;
+        w.addEventListener('statechange', function(){
+          if(w.state === 'installed' && navigator.serviceWorker.controller) showTip();
+        });
+      });
+      r.update().catch(function(){});
+      setInterval(function(){ r.update().catch(function(){}); }, 20*60*1000);
+    }).catch(function(){});
   });
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState !== 'visible') return;
+    navigator.serviceWorker.getRegistration().then(function(r){ if(r) r.update().catch(function(){}); });
+  });
+  window.addEventListener('load', function(){ tip = document.getElementById('updTip'); });
 })();
 </script>
 
