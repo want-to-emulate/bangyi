@@ -1878,14 +1878,46 @@ var DUNS = [
   { id: 'echo', n: '回 声 隧 道', s: '喊一声，回来三声', line: '隧道很长，灯只亮一半。',
     o: [{ t: '大声背一段', d: '里程 +0.6', e: { km: 0.6 } },
         { t: '听回声', d: '感染 −1', e: { inf: -1 } },
-        { t: '关灯冲过去', d: '点数 +3，精力 −20', e: { pts: 3, nrg: -20 } }] }
+        { t: '关灯冲过去', d: '点数 +3，精力 −20', e: { pts: 3, nrg: -20 } }] },
+  { id: 'bath', n: '司 机 澡 堂', s: '热水按盆卖', line: '门口写着「只收现金，不管行李」。',
+    o: [{ t: '冲个热水澡', d: '卫生 +55', e: { hyg: 55 } },
+        { t: '泡到水凉', d: '精力 +30，卫生 +20', e: { nrg: 30, hyg: 20 } },
+        { t: '把衣服搓一搓', d: '卫生 +25，口渴 +10', e: { hyg: 25, thirst: 10 } }] },
+  { id: 'market', n: '桥 下 的 集 市', s: '灯泡串着，什么都卖', line: '有人拿手电筒照了照你的车。',
+    o: [{ t: '换一件改装件', d: '15 点', e: { pts: -15, mod: 1 } },
+        { t: '买四瓶水', d: '2 点', e: { pts: -2, item: 'water', n: 4 } },
+        { t: '听人吹一晚上牛', d: '精力 +10，感染 −1', e: { nrg: 10, inf: -1 } }] },
+  { id: 'radio', n: '山 顶 的 信 号 塔', s: '红灯一闪一闪', line: '塔下有个能用的插座。',
+    o: [{ t: '给家里打个电话', d: '精力 +20，感染 −1', e: { nrg: 20, inf: -1 } },
+        { t: '拆块天线板', d: '改装件 +1，精力 −15', e: { mod: 1, nrg: -15 } },
+        { t: '在塔基躲一阵雨', d: '卫生 −5，精力 +15', e: { hyg: -5, nrg: 15 } }] },
+  { id: 'bus', n: '抛 锚 的 校 车', s: '黄漆掉了一半', line: '司机在车头抽烟，说推一把就行。',
+    o: [{ t: '帮着推一把', d: '点数 +5，精力 −15', e: { pts: 5, nrg: -15 } },
+        { t: '在后排睡一觉', d: '精力 +40', e: { nrg: 40 } },
+        { t: '翻座位下的储物箱', d: '箱子 +1，感染 +1', e: { box: 1, inf: 1 } }] },
+  { id: 'pool', n: '盐 碱 地 的 水 洼', s: '雨后攒下的，看不清底', line: '水面浮着一层白。',
+    o: [{ t: '洗把脸', d: '卫生 +15，口渴 +20', e: { hyg: 15, thirst: 20 } },
+        { t: '灌满四瓶', d: '水 ×4', e: { item: 'water', n: 4 } },
+        { t: '泡脚歇一会儿', d: '精力 +15', e: { nrg: 15 } }] },
+  { id: 'banner', n: '山 口 的 经 幡', s: '风一吹，整片都在响', line: '有个老人坐在石头上，不说话。',
+    o: [{ t: '系一条布', d: '感染 −2', e: { inf: -2 } },
+        { t: '坐一会儿再走', d: '点数 +8', e: { pts: 8 } },
+        { t: '拍一张照', d: '精力 +5，卫生 −5', e: { nrg: 5, hyg: -5 } }] },
+  { id: 'store', n: '卡 车 停 靠 点', s: '二十四小时，灯管发青', line: '货架上剩的不多，但都在打折。',
+    o: [{ t: '买两罐咖啡', d: '2 点', e: { pts: -2, item: 'coffee', n: 2 } },
+        { t: '加热两份汤', d: '3 点', e: { pts: -3, item: 'soup', n: 2 } },
+        { t: '趴在桌上打盹', d: '精力 +25', e: { nrg: 25 } }] },
+  { id: 'yard', n: '废 车 场', s: '一层压着一层的铁', line: '看场子的狗叫了两声就不叫了。',
+    o: [{ t: '拆点能用的零件', d: '改装件 +1，精力 −20', e: { mod: 1, nrg: -20 } },
+        { t: '翻一个工具箱', d: '箱子 +1', e: { box: 1 } },
+        { t: '在空车里睡到天亮', d: '精力 +30，卫生 −10', e: { nrg: 30, hyg: -10 } }] }
 ];
 function dunPick() {
-  var w = weekKey();
-  if (S.dunWeek !== w) {
+  var d = dkey();
+  if (S.dunDay !== d || !(S.dunPicks || []).length) {
     var pool = DUNS.map(function (x) { return x.id }), pick = [];
     while (pick.length < 2 && pool.length) pick.push(pool.splice(Math.floor(rnd() * pool.length), 1)[0]);
-    S.dunWeek = w; S.dunPicks = pick; S.dunDone = {}; save();
+    S.dunDay = d; S.dunPicks = pick; S.dunDone = {}; save();
   }
   return S.dunPicks || [];
 }
@@ -1893,7 +1925,7 @@ function dunGet(id) { for (var i = 0; i < DUNS.length; i++) if (DUNS[i].id === i
 function dunDone(id) { return !!(S.dunDone && S.dunDone[id]) }
 function dunCan() { var d = S.days[dkey()]; return !!(d && d.seg >= 1) && S.fuel >= 2 }
 function dunEnter(id) {
-  if (dunDone(id)) return toast('这周已经去过了');
+  if (dunDone(id)) return toast('今天已经去过了');
   if (!dunCan()) return toast('先去跑 1 段，再留 2 格油');
   S.fuel -= 2; S.dunOpen = id; snd('open'); save(); render();
 }
@@ -1935,7 +1967,7 @@ function renderDun() {
     });
     h += '<div class="btns"><button class="big ghost" onclick="A.dunClose()">先不进去</button></div></div>';
   } else {
-    h += '<div class="panel"><p class="ptitle">本 周 的 副 本</p>';
+    h += '<div class="panel"><p class="ptitle">今 天 的 副 本</p>';
     picks.forEach(function (id) {
       var d = dunGet(id), done = dunDone(id);
       h += '<div class="item"><div class="n">' + d.n + '<small> ' + d.s + '</small></div>'
@@ -1943,8 +1975,8 @@ function renderDun() {
         + (done ? '去过了' : '进去') + '</button></div>';
     });
     h += '<div class="hint" style="text-align:left;font-size:11.5px;line-height:1.75;margin-top:8px">'
-      + '每周轮换两个：修车铺、深夜食堂、废弃收费站、回声隧道。<br>'
-      + '进去要 2 格油 + 今天已经跑过 1 段，一周只能各去一次。</div></div>';
+      + '每天换两个，从路边十几处摊子里轮。<br>'
+      + '进去要 2 格油 + 今天已经跑过 1 段，每处每天只能去一次。</div></div>';
   }
   return h;
 }
