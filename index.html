@@ -2344,7 +2344,51 @@ var NIGHTS = [
       { t:'看看有没有人遛猫', e:{ box:1, risk:.2 }, r:'猫没看见，倒是看见椅背后面有个纸袋。' } ] }
 ];
 
-function spotList(kind){ return kind === 'gate' ? GATES : NIGHTS; }
+var DAWNS = [
+  { id:'breakfast', n:'早餐摊', s:'刚出摊，油条还在锅里', o:[
+      { t:'吃一碗粥', e:{ full:30, pts:-1 }, r:'热的，胃里一下就踏实了。' },
+      { t:'只买一杯豆浆', e:{ thirst:25, full:8 }, r:'捧着走了两百米，喝完。' },
+      { t:'帮老板搬两箱豆浆', e:{ nrg:-8, pts:3, full:15 }, r:'他要给钱，你没要，他就塞给你三个包子。' } ] },
+  { id:'bridge', n:'大桥上', s:'太阳刚从桥塔后面出来', o:[
+      { t:'站着看十分钟', e:{ nrg:8, inf:-1 }, r:'江面上有雾，一辆早班船从底下过去。' },
+      { t:'靠着栏杆发会儿呆', e:{ nrg:10 }, r:'什么都没想。这十分钟不算浪费。' },
+      { t:'数桥下过了几条船', e:{ pts:2 }, r:'十七条。最后一条拖着很长的水痕。' } ] },
+  { id:'firstbus', n:'首班公交', s:'车里只有三个人', o:[
+      { t:'坐到终点再坐回来', e:{ nrg:14, pts:-2 }, r:'来回四十分钟，你在后排睡着了。' },
+      { t:'跟司机聊两句', e:{ pts:2, nrg:4 }, r:'他说他开了十九年夜班。' },
+      { t:'在车上背十个词', e:{ pts:4, nrg:-6 }, r:'十个词，记住了七个。这是今天第一件真的输出。' } ] },
+  { id:'field', n:'操场', s:'跑道上只有你和扫地的', o:[
+      { t:'走两圈', e:{ nrg:10, hyg:6 }, r:'露水打湿了鞋面。' },
+      { t:'慢跑一圈', e:{ nrg:-6, hyg:-10, pts:4 }, r:'四百米，喘得厉害，但脑子醒了。' },
+      { t:'在台阶上坐着看天', e:{ nrg:8 }, r:'天一点点亮起来，颜色像被水洗过。' } ] }
+];
+var HAULS = [
+  { id:'truckstop', n:'货运停车带', s:'一排车头，几盏小灯', o:[
+      { t:'跟司机搭话', e:{ pts:3, box:1 }, r:'他给了你一个纸箱，说里面是上次多出来的。' },
+      { t:'在驾驶座上睡一小时', e:{ nrg:20 }, r:'醒来时天已经全黑。' },
+      { t:'买碗面', e:{ pts:-2, full:40, thirst:20 }, r:'十块钱，加了个蛋。' } ] },
+  { id:'waterst', n:'加水站', s:'水管盘在铁架子上', o:[
+      { t:'把瓶子都灌满', e:{ thirst:30 }, r:'灌了四瓶，够明天一天。' },
+      { t:'冲个凉', e:{ hyg:25, nrg:6 }, r:'水是凉的，冲完人精神了。' },
+      { t:'帮人搬水管', e:{ nrg:-10, pts:4, hyg:-8 }, r:'搬了六趟，衣服全湿了。' } ] },
+  { id:'drivers', n:'司机之家', s:'洗衣机在转，电视开着没人看', o:[
+      { t:'把衣服洗了', e:{ hyg:30, nrg:-6 }, r:'四十分钟，衣服出来是热的。' },
+      { t:'在沙发上躺二十分钟', e:{ nrg:16 }, r:'你没睡着，但也没想事情。' },
+      { t:'换一件改装件', e:{ pts:-12, mod:1 }, r:'柜台上那件旧的，老板说能用。' } ] }
+];
+var FEVER = [
+  { id:'corridor', n:'发烧时的走廊', s:'灯管一闪一闪，墙上有你的影子', o:[
+      { t:'往前走', e:{ inf:-1, nrg:-10 }, r:'走到尽头是一扇门。推开来，还是走廊。' },
+      { t:'靠着墙坐下', e:{ inf:-1, nrg:6, full:-10 }, r:'坐了多久不知道。站起来时腿麻了。' },
+      { t:'跟影子说两句话', e:{ inf:1, pts:5 }, r:'它替你把没说出口的话说了。你不该听，但听了。' } ] },
+  { id:'pharmacy', n:'药店门口', s:'卷帘门拉到一半', o:[
+      { t:'买一盒药', e:{ pts:-6, inf:-1 }, r:'店员看了你一眼，没问什么。' },
+      { t:'问有没有热水', e:{ thirst:20, inf:-1 }, r:'她给你倒了半杯，说别在这儿站着。' },
+      { t:'在门口等到开门', e:{ nrg:-8, pts:3 }, r:'等了半小时。灯全亮了以后，你反而不想进去了。' } ] }
+];
+function spotList(kind){
+  return kind === 'gate' ? GATES : kind === 'dawn' ? DAWNS : kind === 'haul' ? HAULS : kind === 'fever' ? FEVER : NIGHTS;
+}
 function spotOf(kind, id){
   var a = spotList(kind);
   for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i];
@@ -2355,6 +2399,9 @@ function gateLeft(){
   return Math.max(0, 3 - (d.seg || 0));
 }
 function gateOpen(){ return gateLeft() === 0 }
+function dawnOpen(){ var hh = new Date().getHours(); return hh >= 6 && hh < 9 }
+function haulKm(){ return (S.days[dkey()] || { km:0 }).km || 0 }
+function feverOpen(){ return (S.st.inf || 0) >= 2 }
 function nightOpen(){ var hh = new Date().getHours(); return hh >= 22 || hh < 3 }
 function spotDone(kind, id){
   var v = S.spotDone || {};
@@ -2365,6 +2412,10 @@ function spotCan(kind, id){
   if (kind === 'gate' && !gateOpen()) return '还差 ' + gateLeft() + ' 段';
   if (kind === 'night' && (S.days[dkey()] || { seg:0 }).seg < 1) return '今天还没上路';
   if (kind === 'night' && !nightOpen()) return '22 点后';
+  if (kind === 'dawn' && (S.days[dkey()] || { seg:0 }).seg >= 1) return '今天已经跑过了';
+  if (kind === 'dawn' && !dawnOpen()) return '6 点到 9 点';
+  if (kind === 'haul' && haulKm() < 6) return '今天还不到 6 km';
+  if (kind === 'fever' && !feverOpen()) return '感染不到 2 格';
   return '';
 }
 function spotFx(e){
@@ -2422,27 +2473,25 @@ function closeModalSilent(){
   var m = $('mask'); if (m && m.parentNode) m.parentNode.removeChild(m);
 }
 function renderSpots(){
-  var h = '<div class="panel"><p class="ptitle">关 卡</p>'
-    + '<div class="hint" style="text-align:left;font-size:11.5px;line-height:1.7">'
-    + (gateOpen() ? '今天已经跑满 3 段，关卡都开着。' : '今天跑满 3 段才开。还差 ' + gateLeft() + ' 段。') + '</div>';
-  GATES.forEach(function(g){
-    var why = spotCan('gate', g.id);
-    h += '<div class="item"><div class="n">' + esc(g.n) + '<small> ' + esc(g.s) + '</small></div>'
-      + '<button class="mini" ' + (why ? 'disabled' : '') + ' onclick="A.openSpot(\'gate\',\'' + g.id + '\')">'
-      + (why || '过去') + '</button></div>';
+  var G = [
+    ['gate','关 卡', function(){ return gateOpen() ? '今天已经跑满 3 段，关卡都开着。' : '今天跑满 3 段才开。还差 ' + gateLeft() + ' 段。' }, GATES],
+    ['dawn','清 晨', function(){ var d = S.days[dkey()] || { seg:0 }; return (dawnOpen() && (d.seg || 0) < 1) ? '6 点到 9 点，出发之前。今天还没上路，正好。' : '早上 6 点到 9 点，而且得赶在今天跑第一段之前。'; }, DAWNS],
+    ['haul','长 途', function(){ var k = haulKm(); return k >= 6 ? '今天跑够了 ' + k.toFixed(1) + ' 公里，这些地方亮着灯。' : '今天跑够 6 公里才开。还差 ' + (6 - k).toFixed(1) + ' 公里。'; }, HAULS],
+    ['night','夜 行', function(){ return nightOpen() ? '22 点以后，路上会出现这些东西。今天得先跑过一段。' : '晚上 22 点以后才开，而且今天得先跑过一段。'; }, NIGHTS],
+    ['fever','发 烧', function(){ var n = S.st.inf || 0; return n >= 2 ? '感染 ' + n + ' 格。这些东西开始出现了。' : '感染到 2 格才看得见。现在是 ' + n + ' 格。'; }, FEVER]
+  ];
+  var h = '';
+  G.forEach(function(g){
+    h += '<div class="panel"><p class="ptitle">' + g[1] + '</p>'
+      + '<div class="hint" style="text-align:left;font-size:11.5px;line-height:1.7">' + g[2]() + '</div>';
+    g[3].forEach(function(x){
+      var why = spotCan(g[0], x.id);
+      h += '<div class="item"><div class="n">' + esc(x.n) + '<small> ' + esc(x.s) + '</small></div>'
+        + '<button class="mini" ' + (why ? 'disabled' : '') + ' onclick="A.openSpot(\'' + g[0] + '\',\'' + x.id + '\')">'
+        + (why || '过去') + '</button></div>';
+    });
+    h += '</div>';
   });
-  h += '</div>';
-
-  h += '<div class="panel"><p class="ptitle">夜 行</p>'
-    + '<div class="hint" style="text-align:left;font-size:11.5px;line-height:1.7">'
-    + (nightOpen() ? '22 点以后，路上会出现这些东西。今天得先跑过一段。' : '晚上 22 点以后才开，而且今天得先跑过一段。') + '</div>';
-  NIGHTS.forEach(function(g){
-    var why = spotCan('night', g.id);
-    h += '<div class="item"><div class="n">' + esc(g.n) + '<small> ' + esc(g.s) + '</small></div>'
-      + '<button class="mini" ' + (why ? 'disabled' : '') + ' onclick="A.openSpot(\'night\',\'' + g.id + '\')">'
-      + (why || '过去') + '</button></div>';
-  });
-  h += '</div>';
   return h;
 }
 /* ---------- 路上的随机事件 ---------- */
