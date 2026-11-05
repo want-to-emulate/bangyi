@@ -420,6 +420,11 @@
 .pl-mid.go{animation-duration:11s}
 .pl-near.go{animation-duration:6s}
 
+.cxl{display:flex;justify-content:center;margin-top:10px}
+.cbtn{background:transparent;border:1px solid rgba(255,255,255,.16);color:#8b8496;
+  font-size:12.5px;padding:7px 16px;border-radius:999px;letter-spacing:.06em}
+.cbtn.on{border-color:rgba(255,120,120,.55);color:#ff9b9b;background:rgba(255,90,90,.08)}
+
 /* v0.9 随机事件 */
 .cold.inf{border-color:rgba(255,120,90,.45);background:linear-gradient(180deg,rgba(255,110,80,.16),rgba(255,110,80,.06));color:#ffb4a0}
 .modal.ev .evi{font-size:26px;line-height:1;margin-bottom:10px;text-align:center}
@@ -726,7 +731,7 @@ function startSeg(kind){
   }
   T={kind:kind,end:Date.now()+segMs(kind)};
   render();
-  setTimeout(function(){ if(T&&T.kind===kind) finishSeg() },segMs(kind)+30);
+  var _seg=T; setTimeout(function(){ if(T&&T===_seg) finishSeg() },segMs(kind)+30);
 }
 function forceSeg(){
   if(!T) return;
@@ -954,7 +959,7 @@ function hwStart(min){
   if(T) return;
   T={kind:'hw',min:min,end:Date.now()+(S.demo?60000:min*60000)};
   render();
-  setTimeout(function(){ if(T&&T.kind==='hw') finishHw() },(S.demo?60000:min*60000)+30);
+  var _seg=T; setTimeout(function(){ if(T&&T===_seg) finishHw() },(S.demo?60000:min*60000)+30);
 }
 function finishHw(){
   var min=T.min; T=null;
@@ -2451,7 +2456,8 @@ function driveTiming(){
    +'<div class="hud row end"><div class="hbig">'+S.km.toFixed(1)+'<small>km</small><em>已行进</em></div>'
    +'<div class="gz">'+gauge('full','饱')+gauge('thirst','水')+gauge('nrg','力')+gauge('hyg','净')+'</div></div>'
    +'</div></div>';
-  h+='<div class="dock"><div class="dline">现在不用想任何事情。到点它会响。</div></div>';
+  h+='<div class="dock"><div class="dline">现在不用想任何事情。到点它会响。</div>'
+   +'<div class="cxl"><button class="cbtn'+(_askC?' on':'')+'" onclick="A.cancelAsk()">'+(_askC?'真的要取消？':'取消这次')+'</button></div></div>';
   cdTick();
   return h;
 }
@@ -2480,6 +2486,23 @@ function renderDrive(){
   h+=mapHTML();
   h+=lag(S.km);
   return h;
+}
+
+/* ---- 取消这一段（不算里程、不给点、不扣状态） ---- */
+var _askC = 0;
+function cancelAsk(){
+  if(!T) return;
+  if(_askC){ cancelSeg(); return }
+  _askC = 1; render(); snd('err');
+  clearTimeout(window._ct);
+  window._ct = setTimeout(function(){ _askC = 0; if(T) render(); }, 4000);
+}
+function cancelSeg(){
+  if(!T) return;
+  T = null; _askC = 0;
+  clearInterval(window._cd); window._cd = null;
+  toast('这次不算，随时可以再来');
+  render();
 }
 function btn(kind,ni,style,alt){
   var cost=SEG[kind].fuel;
@@ -2955,7 +2978,7 @@ function sfxToggle(){ S.sfx = sfxOn() ? 0 : 1; save(); render(); snd('tap') }
 A.towerSel=towerSel; A.towerStart=towerStart; A.towerEnter=towerEnter; A.towerCard=towerCard; A.towerRule=towerRule; A.towerNote=towerNote; A.sfxToggle=sfxToggle;
 A.evPick=evPick; A.calm=calm; A.showEv=function(){ if(S.curEv!=null) showEvent(S.curEv) }; A.raw=function(){ return S }; A.maybeEv=maybeEvent; A.evList=function(){ return EVENTS.map(function(e){return e.t}) };
 A.snack=snack; A.trinkets=function(){ return (S.trinkets||[]) }; A.lootPool=function(q){ return POOL[q].map(function(p){return p.k}) };
-A.dunEnter=dunEnter; A.dunChoice=dunChoice; A.dunClose=dunClose; A.stallBuy=stallBuy; A.sell=sell;
+A.dunEnter=dunEnter; A.dunChoice=dunChoice; A.dunClose=dunClose; A.stallBuy=stallBuy; A.sell=sell; A.cancelAsk=cancelAsk; A.cancelSeg=cancelSeg;
 
 /* ---------- 启动 ---------- */
 S=load();
