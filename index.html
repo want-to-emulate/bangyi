@@ -464,9 +464,9 @@ var PEND=[525,580,655,710,885,940,1015,1070,1185,1240,1295];
 
 /* 段：里程=时间 */
 var SEG={
-  short:{n:'短途',min:25,km:0.5,fuel:1},
-  std:{n:'上路',min:50,km:1,fuel:1},
-  long:{n:'长途',min:90,km:2,fuel:2}
+  short:{n:'短途',min:25,km:0.5,fuel:0},
+  std:{n:'上路',min:50,km:1,fuel:0},
+  long:{n:'长途',min:90,km:2,fuel:0}
 };
 
 /* 载具 */
@@ -740,13 +740,18 @@ function finishSeg(){
   S.km=Math.round((S.km+gain)*10)/10;
   if(!S.days[t]) S.days[t]={seg:0,km:0};
   S.days[t].seg++; S.days[t].km=Math.round((S.days[t].km+gain)*10)/10;
+  var dm=S.days[t].km, mtitle=[];
+  if(!S.days[t].m3 && dm>=3){ S.days[t].m3=1; S.boxes=(S.boxes||0)+1; mtitle.push('今天满 3 公里 · 车顶多一个箱子') }
+  if(!S.days[t].m5 && dm>=5){ S.days[t].m5=1; S.points+=2; mtitle.push('今天满 5 公里 · 多给 2 点') }
+  if(!S.days[t].m8 && dm>=8){ S.days[t].m8=1; S.boxes=(S.boxes||0)+1; mtitle.push('今天满 8 公里 · 又多了个箱子') }
+  if(mtitle.length) setTimeout(function(){ toast(mtitle.join(' · ')); snd('coin') }, 260);
   S.streak = (S.lastSeg&&dayDiff(S.lastSeg,t)===1)?S.streak+1:(S.lastSeg===t?S.streak:1);
   S.lastSeg=t;
   step('full',kind==='short'?-6:kind==='std'?-12:-20);
   step('thirst',kind==='short'?-8:kind==='std'?-15:-25);
   step('hyg',-10);
   if(new Date().getHours()>=23) step('nrg',-25);
-  var pts=Math.max(1,Math.round(SEG[kind].km));
+  var pts=kind==='long'?3:Math.max(1,Math.round(SEG[kind].km));
   if(S.st.inf>=3) pts=has('audio')? Math.max(1,Math.round(pts*.75)) : Math.max(1,Math.round(pts*.5));
   S.points+=pts;
   S.pending={kind:kind,gain:gain,pts:pts,rb:rb.label,mul:mul};
@@ -1974,7 +1979,7 @@ function renderTower(){
      + '<div class="btns"><button class="big primary" onclick="A.towerEnter()">推门进去</button></div>';
   } else {
     h += '<p class="ptitle">进 塔</p>'
-     + '<div class="hint" style="text-align:left;font-size:12px;line-height:1.7">进塔 = 一段 90 分钟的路，耗 2 格油。<br>里程照常算，只是这段路上多了一座塔。</div>'
+     + '<div class="hint" style="text-align:left;font-size:12px;line-height:1.7">进塔 = 一段 90 分钟的路，不耗油。<br>里程照常算，只是这段路上多了一座塔。</div>'
      + '<div class="btns"><button class="big primary" onclick="A.towerStart(\'' + sel + '\')">进塔 · 90 分钟</button></div>';
   }
   h += '</div>';
@@ -2401,7 +2406,7 @@ function segState(kind,ni){
 }
 function actBtn(kind,ni){
   var st=segState(kind,ni), sg=SEG[kind];
-  var sub=st.ok?(sg.km+' 公里 · '+st.cost+' 格油'):st.why;
+  var sub=st.ok?(sg.km+' 公里'):st.why;
   return '<button class="act'+(kind==='std'?' std':'')+(st.ok?'':' off')+'" '
    +(st.ok?'onclick="A.start(\''+kind+'\')"':'disabled')+'>'
    +'<b>'+sg.min+'</b><span>分钟</span><em>'+sub+'</em></button>';
@@ -2462,7 +2467,7 @@ function renderDrive(){
    +toolBtn(IC.eye,'想学没学','A.confess()')
    +(S.st.inf>0?toolBtn(IC.eye,calmLbl(),'A.calm()'):'')
    +'</div>'
-   +'<div class=\"stat\">'+S.fuel+'/'+maxFuel()+' 格油 · '+S.points+' 点'+(S.streak>1?' · 连续 '+S.streak+' 段':'')+'</div>'
+   +'<div class="stat">今天 '+((S.days[dkey()]||{}).seg||0)+' 段 · '+((S.days[dkey()]||{}).km||0)+' km · '+S.points+' 点'+(S.streak>1?' · 连续 '+S.streak+' 段':'')+'</div>'
    +'</div>';
   h+=mapHTML();
   h+=lag(S.km);
