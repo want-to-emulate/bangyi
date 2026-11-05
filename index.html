@@ -446,7 +446,7 @@
 'use strict';
 
 /* ---------- 常量 ---------- */
-var KEY='bangyi.v03', TOTAL=1200, EXAM='2027-12-25', VER=3;
+var KEY='bangyi.v03', TOTAL=1600, EXAM='2027-12-25', VER=3;
 var WK=['日','一','二','三','四','五','六'];
 var DKEY=['sun','mon','tue','wed','thu','fri','sat'];
 var PSTART=[480,535,610,665,840,895,970,1025,1140,1195,1250];
@@ -579,7 +579,7 @@ function save(){ try{ localStorage.setItem(KEY,JSON.stringify(S)) }catch(e){} }
 function has(f){ return S.furn.indexOf(f)>=0 }
 
 /* ---------- 派生数值 ---------- */
-function maxFuel(){ return 3 + (S.lvl>=1?1:0) }
+function maxFuel(){ return 6 + (S.lvl>=1?1:0) + (S.lvl>=4?1:0) }
 function slotMax(){ return VEH[S.veh].slot + (S.lvl>=2?4:0) }
 function hangMax(){ return VEH[S.veh].hang + (S.lvl>=4?2:0) }
 function decayMul(){
@@ -1051,11 +1051,11 @@ function renderChoose(){
 
 /* ---------- 场景 ---------- */
 var ZONES=[
-  {n:'出城废墟',hue:24,to:150},
-  {n:'盐碱地',hue:46,to:400},
-  {n:'山口隧道',hue:206,to:700},
-  {n:'长直道',hue:14,to:1050},
-  {n:'终点站',hue:288,to:1200}
+  {n:'出城废墟',hue:24,to:200},
+  {n:'盐碱地',hue:46,to:530},
+  {n:'山口隧道',hue:206,to:930},
+  {n:'长直道',hue:14,to:1400},
+  {n:'终点站',hue:288,to:1600}
 ];
 function zoneOf(km){var i=0;while(i<ZONES.length-1&&km>=ZONES[i].to)i++;return i}
 var RIDGE=[
@@ -2484,7 +2484,8 @@ function gapTxt(ni){
 }
 function lag(km){
   var left=Math.max(0,dayDiff(dkey(),EXAM));
-  var need=left>0?(TOTAL-km)/left*7:0;
+  var need=left>0?Math.max(0,(TOTAL-km))/left*7:0;
+  if(km>=TOTAL) return '<div class="lag"><b class="ahead">你已经提前到终点站了</b> · 剩 '+left+' 天 · 多跑的都算数，不会白跑</div>';
   return '<div class="lag">还差 '+(TOTAL-km).toFixed(0)+' km · 剩 '+left+' 天 · 每周要跑 <b class="'+(need>20?'':'ahead')+'">'+need.toFixed(1)+' 段</b></div>';
 }
 
