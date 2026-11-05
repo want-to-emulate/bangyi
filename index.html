@@ -406,6 +406,8 @@
 .dp .dpr em{font-style:normal;font-size:10.5px;color:var(--dim);text-align:right;line-height:1.4}
 .dp .q0{color:#c9ced4}.dp .q1{color:var(--ok)}.dp .q2{color:var(--blue)}
 .dp .q3{color:var(--purple)}.dp .q4{color:var(--gold)}
+/* v0.11 */
+.dunline{text-align:left;font-size:12.5px;line-height:1.75;color:#f3ecff;margin-bottom:4px}
 </style>
 
 <link rel="manifest" href="./manifest.webmanifest">
@@ -1005,7 +1007,7 @@ function render(){
 
 function renderNav(){
   if(!S.veh){ $('nav').innerHTML=''; return }
-  var items=[['drive','上路'],['hw','车间'],['car','仓'],['tower','塔'],['rank','榜'],['garage','家']];
+  var items=[['drive','上路'],['hw','车间'],['car','仓'],['tower','副'],['rank','榜'],['garage','家']];
   $('nav').innerHTML=items.map(function(it){
     var cls=(TAB===it[0]?'on':'');
     var dot=(it[0]==='tower'&&towerReady())?'<i class="dot on"></i>':'<i class="dot"></i>';
@@ -1446,6 +1448,47 @@ function svcDaysLeft(){
   var d = new Date().getDay();
   return d === 0 ? 0 : (7 - d);
 }
+/* 本周随机摊位（两个） */
+var STALLS = {
+  fix: { n: '修 车 摊', d: '改装件 15 点，一周一件', p: 15 },
+  med: { n: '药 铺', d: '感冒药 2 点，一周两盒', p: 2 },
+  sup: { n: '补 给 摊', d: '水 ×3 只要 1 点，一周一次', p: 1 },
+  junk: { n: '旧 货 摊', d: '多的东西卖给他换点数', p: 0 }
+};
+var SELLP = { water: 1, wash: 1, biscuit: 2, coffee: 2, med: 3 };
+function stallPick() {
+  var w = weekKey();
+  if (S.stallWeek !== w) {
+    var pool = Object.keys(STALLS), pick = [];
+    while (pick.length < 2 && pool.length) pick.push(pool.splice(Math.floor(rnd() * pool.length), 1)[0]);
+    S.stallWeek = w; S.stallPicks = pick; S.stallBought = {}; save();
+  }
+  return S.stallPicks || [];
+}
+function stallBuy(id) {
+  if (!svcOpen()) return toast('服务区只在周日开');
+  S.stallBought = S.stallBought || {};
+  if (S.stallBought[id]) return toast('这周已经买过了');
+  if (id === 'fix') {
+    if (S.points < 15) return toast('点数不够');
+    S.points -= 15; S.mods++; toast('改装件 +1（修车摊）');
+  } else if (id === 'med') {
+    if (S.points < 2) return toast('点数不够');
+    S.points -= 2; S.inv.med = (S.inv.med || 0) + 2; toast('感冒药 ×2');
+  } else if (id === 'sup') {
+    if (S.points < 1) return toast('点数不够');
+    S.points -= 1; S.inv.water = (S.inv.water || 0) + 3; toast('水 ×3');
+  } else return;
+  S.stallBought[id] = 1; snd('coin'); save(); render();
+}
+function sell(k) {
+  if (!svcOpen()) return toast('服务区只在周日开');
+  if (!(S.inv[k] > 0)) return toast('没有可卖的');
+  S.inv[k]--; S.points += SELLP[k];
+  toast('卖了 1 个 ' + NAME[k] + '，+' + SELLP[k] + ' 点');
+  snd('coin'); save(); render();
+}
+
 function renderSvc(){
   var open = svcOpen(), left = svcDaysLeft();
   var h='<div class="hero">'+stationSVG(open)
@@ -1469,6 +1512,30 @@ function renderSvc(){
      +'<button class="mini" '+(open?'':'disabled')+' onclick="A.buy(\''+x[0]+'\')">'+(open?'买':'周日')+'</button></div>';
   });
   h+='</div>';
+
+  var stalls = stallPick();
+  if (stalls.length) {
+    h += '<div class="panel"><p class="ptitle">本 周 摊 位</p>';
+    stalls.forEach(function (id) {
+      var st = STALLS[id], used = (S.stallBought || {})[id];
+      h += '<div class="item' + (open ? '' : ' dim') + '"><div class="n">' + st.n + '<small> ' + st.d + '</small></div>'
+        + (id === 'junk' ? '' : '<div class="c">' + st.p + ' 点</div>')
+        + '<button class="mini" ' + (open && !used ? '' : 'disabled') + ' onclick="A.stallBuy(\'' + id + '\')">'
+        + (used ? '买过' : (open ? (id === 'junk' ? '看看' : '买') : '周日')) + '</button></div>';
+      if (id === 'junk') {
+        h += '<div class="hint" style="text-align:left;font-size:11px;line-height:1.6;margin:2px 0 8px">'
+          + '水 1 · 洗漱包 1 · 饼干 2 · 咖啡 2 · 药 3</div>';
+        ['water', 'wash', 'biscuit', 'coffee', 'med'].forEach(function (k) {
+          if (S.inv[k] > 0) {
+            h += '<div class="item"><div class="n" style="padding-left:10px">卖 ' + NAME[k] + ' ×' + S.inv[k] + '</div>'
+              + '<div class="c">+' + SELLP[k] + '</div>'
+              + '<button class="mini" ' + (open ? '' : 'disabled') + ' onclick="A.sell(\'' + k + '\')">卖</button></div>';
+          }
+        });
+      }
+    });
+    h += '<div class="hint" style="text-align:left;margin-top:8px">摊位每周换人，周日刷新。</div></div>';
+  }
 
   var st = svcStock();
   if(st.length){
@@ -1689,6 +1756,94 @@ function towerVSvg(t, lit, open){
   return s + body + '</svg>';
 }
 
+/* ---------- 小副本（每周轮换两个） ---------- */
+var DUNS = [
+  { id: 'shop', n: '老 陈 的 修 车 铺', s: '千斤顶底下的铁锈味', line: '老陈头也不抬：「自己看，能用就拿。」',
+    o: [{ t: '拿一件改装件', d: '钻进车底，多一颗螺丝', e: { mod: 1 } },
+        { t: '翻一个箱子', d: '架子最上面压着个铁盒', e: { box: 1 } },
+        { t: '把四条胎打足气', d: '接下来的路轻一点', e: { nrg: 15, hyg: 10 } }] },
+  { id: 'food', n: '深 夜 食 堂', s: '一碗热的，两块钱', line: '老板娘看了你一眼，先把汤端上来了。',
+    o: [{ t: '坐着吃完', d: '饱腹和口渴都补回来', e: { full: 45, thirst: 40 } },
+        { t: '打包带走', d: '两份饼干、两瓶水', e: { item: 'biscuit', item2: 'water', n: 2 } },
+        { t: '帮忙洗碗', d: '换 6 点', e: { pts: 6 } }] },
+  { id: 'gate', n: '废 弃 收 费 站', s: '栏杆歪着，没人收钱', line: '亭子里有台还亮着的显示器。',
+    o: [{ t: '付 10 点过', d: '拿一个箱子', e: { pts: -10, box: 1 } },
+        { t: '直接开过去', d: '不花钱，但心里堵', e: { inf: 1, box: 1 } },
+        { t: '停下来睡一会儿', d: '精力 +35', e: { nrg: 35 } }] },
+  { id: 'echo', n: '回 声 隧 道', s: '喊一声，回来三声', line: '隧道很长，灯只亮一半。',
+    o: [{ t: '大声背一段', d: '里程 +0.6', e: { km: 0.6 } },
+        { t: '听回声', d: '感染 −1', e: { inf: -1 } },
+        { t: '关灯冲过去', d: '点数 +3，精力 −20', e: { pts: 3, nrg: -20 } }] }
+];
+function dunPick() {
+  var w = weekKey();
+  if (S.dunWeek !== w) {
+    var pool = DUNS.map(function (x) { return x.id }), pick = [];
+    while (pick.length < 2 && pool.length) pick.push(pool.splice(Math.floor(rnd() * pool.length), 1)[0]);
+    S.dunWeek = w; S.dunPicks = pick; S.dunDone = {}; save();
+  }
+  return S.dunPicks || [];
+}
+function dunGet(id) { for (var i = 0; i < DUNS.length; i++) if (DUNS[i].id === id) return DUNS[i]; return DUNS[0] }
+function dunDone(id) { return !!(S.dunDone && S.dunDone[id]) }
+function dunCan() { var d = S.days[dkey()]; return !!(d && d.seg >= 1) && S.fuel >= 2 }
+function dunEnter(id) {
+  if (dunDone(id)) return toast('这周已经去过了');
+  if (!dunCan()) return toast('先去跑 1 段，再留 2 格油');
+  S.fuel -= 2; S.dunOpen = id; snd('open'); save(); render();
+}
+function dunClose() { S.dunOpen = null; save(); render() }
+function dunChoice(i) {
+  var id = S.dunOpen; if (!id) return;
+  var d = dunGet(id), o = d.o[i], e = o.e, msg = [];
+  if (e.mod) { S.mods += e.mod; msg.push('改装件 +1') }
+  if (e.box) { S.boxes = (S.boxes || 0) + e.box; msg.push('箱子 +' + e.box) }
+  if (e.pts) {
+    if (S.points + e.pts < 0) return toast('点数不够');
+    S.points += e.pts; msg.push('点数 ' + (e.pts > 0 ? '+' : '') + e.pts);
+  }
+  if (e.km) {
+    S.km = Math.round((S.km + e.km) * 10) / 10;
+    var t = dkey(); if (!S.days[t]) S.days[t] = { seg: 0, km: 0 };
+    S.days[t].km = Math.round((S.days[t].km + e.km) * 10) / 10;
+    msg.push('里程 +' + e.km);
+  }
+  if (e.inf) { S.st.inf = clamp((S.st.inf || 0) + e.inf, 0, 3); msg.push('感染 ' + (e.inf > 0 ? '+' : '') + e.inf) }
+  ['full', 'thirst', 'nrg', 'hyg'].forEach(function (k) { if (e[k]) { step(k, e[k]); msg.push(({ full: '饱腹', thirst: '口渴', nrg: '精力', hyg: '卫生' })[k] + ' ' + (e[k] > 0 ? '+' : '') + e[k]) } });
+  if (e.item) { S.inv[e.item] = (S.inv[e.item] || 0) + e.n; msg.push(NAME[e.item] + ' ×' + e.n) }
+  if (e.item2) { S.inv[e.item2] = (S.inv[e.item2] || 0) + e.n; msg.push(NAME[e.item2] + ' ×' + e.n) }
+  S.dunDone = S.dunDone || {}; S.dunDone[id] = 1; S.dunOpen = null;
+  snd('coin'); save(); render();
+  toast(msg.length ? msg.join(' · ') : '什么也没发生');
+}
+function renderDun() {
+  var picks = dunPick(), h = '';
+  var cur = S.dunOpen;
+  if (cur) {
+    var d = dunGet(cur);
+    h += '<div class="panel"><p class="ptitle">' + d.n + '</p>'
+      + '<div style="text-align:left;font-size:13px;line-height:1.75;color:#f3ecff">' + d.line + '</div>'
+      + '<div class="hint" style="text-align:left;margin:10px 0 2px">选一个，选完这周就不能再来了。</div>';
+    d.o.forEach(function (o, i) {
+      h += '<button class="big" style="width:100%;margin-top:8px;text-align:left" onclick="A.dunChoice(' + i + ')">'
+        + '<b style="font-size:15px">' + o.t + '</b><br><span style="font-size:11.5px;opacity:.7">' + o.d + '</span></button>';
+    });
+    h += '<div class="btns"><button class="big ghost" onclick="A.dunClose()">先不进去</button></div></div>';
+  } else {
+    h += '<div class="panel"><p class="ptitle">本 周 的 副 本</p>';
+    picks.forEach(function (id) {
+      var d = dunGet(id), done = dunDone(id);
+      h += '<div class="item"><div class="n">' + d.n + '<small> ' + d.s + '</small></div>'
+        + '<button class="mini" ' + (done ? 'disabled' : '') + ' onclick="A.dunEnter(\'' + id + '\')">'
+        + (done ? '去过了' : '进去') + '</button></div>';
+    });
+    h += '<div class="hint" style="text-align:left;font-size:11.5px;line-height:1.75;margin-top:8px">'
+      + '每周轮换两个：修车铺、深夜食堂、废弃收费站、回声隧道。<br>'
+      + '进去要 2 格油 + 今天已经跑过 1 段，一周只能各去一次。</div></div>';
+  }
+  return h;
+}
+
 function renderTower(){
   var sel = S.towerSel || 'math', t = TOWER_OF(sel), w = towerWin();
   var done = towerDone(sel), rd = w && w.id === sel && towerReady();
@@ -1742,6 +1897,8 @@ function renderTower(){
      + '<div style="text-align:left;font-size:13px;line-height:1.8;color:#f3ecff">「' + S.towerNote.txt + '」</div>'
      + '<div class="hint" style="text-align:left;font-size:11px;line-height:1.7;margin-top:6px">' + S.towerNote.at + ' 写的。做到了吗？</div></div>';
   }
+
+  h += renderDun();
 
   h += '<div class="panel"><p class="ptitle">这 四 座 塔</p>'
    + '<div class="hint" style="text-align:left;font-size:11.5px;line-height:1.8">四座塔各对应一门要考的东西，形状不一样，第一关的账也不一样。<br>通一座，给一件改装件、感染退一格。同一座塔只能通一次。</div></div>';
@@ -2454,6 +2611,7 @@ window.A={
 function sfxToggle(){ S.sfx = sfxOn() ? 0 : 1; save(); render(); snd('tap') }
 A.towerSel=towerSel; A.towerStart=towerStart; A.towerEnter=towerEnter; A.towerCard=towerCard; A.towerRule=towerRule; A.towerNote=towerNote; A.sfxToggle=sfxToggle;
 A.evPick=evPick; A.calm=calm; A.showEv=function(){ if(S.curEv!=null) showEvent(S.curEv) }; A.raw=function(){ return S };
+A.dunEnter=dunEnter; A.dunChoice=dunChoice; A.dunClose=dunClose; A.stallBuy=stallBuy; A.sell=sell;
 
 /* ---------- 启动 ---------- */
 S=load();
