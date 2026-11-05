@@ -1951,5 +1951,26 @@ render();
   });
 })();
 </script>
+
+<div id="pwaInstall" style="display:none;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom));z-index:99999">
+  <button type="button" style="display:flex;align-items:center;gap:8px;padding:13px 22px;border:0;border-radius:999px;background:linear-gradient(180deg,#ffc561,#f0a02a);color:#241a05;font-size:15px;font-weight:700;font-family:inherit;box-shadow:0 10px 26px rgba(0,0,0,.5)">&#8595; 装到桌面</button>
+</div>
+<script>
+(function(){
+  var el = document.getElementById('pwaInstall');
+  if(!el) return;
+  if(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return;
+  var deferred = null;
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault(); deferred = e; el.style.display = 'block';
+  });
+  el.querySelector('button').addEventListener('click', function(){
+    if(!deferred) return;
+    deferred.prompt();
+    deferred.userChoice.then(function(){ deferred = null; el.style.display = 'none'; });
+  });
+  window.addEventListener('appinstalled', function(){ el.style.display = 'none'; });
+})();
+</script>
 </body>
 </html>
