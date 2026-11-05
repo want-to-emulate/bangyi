@@ -960,9 +960,6 @@ function hwStart(min){
   var t=dkey();
   var d=S.days[t];
   if(!d||d.seg<1){ toast('先跑 1 段，再来车间'); return }
-  var _lim=180+((S.buff&&S.buff.lamp)?60:0);
-  if(S.hw.today>=_lim){ toast('今天已经记满 '+Math.round(_lim/60)+' 小时'); return }
-  if(S.buff&&S.buff.lamp){ S.buff.lamp=0; save() }
   if(T) return;
   T={kind:'hw',min:min,end:Date.now()+(S.demo?60000:min*60000)};
   render();
@@ -970,9 +967,11 @@ function hwStart(min){
 }
 function finishHw(){
   var min=T.min; T=null;
-  var room=Math.min(min,180-S.hw.today);
-  S.hw.today+=room; S.hw.min+=room;
-  var before=Math.floor((S.hw.min-room)/180), after=Math.floor(S.hw.min/180);
+  var rate=(S.buff&&S.buff.lamp)?1.2:1;
+  if(S.buff&&S.buff.lamp) S.buff.lamp=0;
+  var room=min, eff=Math.round(min*rate);
+  S.hw.today+=room; S.hw.min+=eff;
+  var before=Math.floor((S.hw.min-eff)/180), after=Math.floor(S.hw.min/180);
   var got=after-before;
   if(got>0) S.mods+=got;
   toast('记了 '+room+' 分钟工时'+(got?'，得到 '+got+' 件改装件':''));
@@ -2663,7 +2662,7 @@ function renderHw(){
   var h='<div class="panel"><p class="ptitle">车 间 · 工时</p>';
   h+='<div style="font-family:var(--mono);font-size:32px;text-align:center;padding:6px 0">'+S.hw.min+'<small style="font-size:13px;color:var(--dim2)"> 分钟</small></div>';
   h+='<div class="track"><i style="width:'+(S.hw.min%180)/180*100+'%"></i></div>';
-  h+='<div class="lag">每 180 分钟 = 1 件改装件 · 今天已记 '+S.hw.today+'/180</div>';
+  h+='<div class="lag">每 180 分钟 = 1 件改装件 · 今天已记 '+S.hw.today+' 分钟（不封顶）</div>';
   h+='<div class="btns">';
   [25,50,90].forEach(function(m){
     h+='<button class="big ghost" onclick="A.hwStart('+m+')">'+m+' 分钟</button>';
