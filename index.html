@@ -1034,17 +1034,18 @@ function tab(t){ TAB=t; render() }
 
 function render(){
   if(S.veh) rollover();
+  if(TAB === 'rank') TAB = 'drive';
   var h = '';
   if(!S.veh){ h = renderChoose(); }
   else {
     h += '<div class="hd"><div class="brand">榜 一</div><div class="hdr">'
       + '<button class="gear snd' + (sfxOn() ? '' : ' off') + '" onclick="A.sfxToggle()">' + (sfxOn() ? '♪' : '♪') + '</button>'
+      + '<button class="gear" onclick="A.openRank()">榜</button>'
       + '<button class="gear" onclick="A.setup()">设置</button></div></div>';
     if(TAB === 'drive') h += renderDrive();
     else if(TAB === 'hw') h += renderHw();
     else if(TAB === 'car') h += renderCar();
-    else if(TAB === 'rank') h += renderRank();
-    else if(TAB === 'tower') h += renderTower();
+        else if(TAB === 'tower') h += renderTower();
     else if(TAB === 'svc') h += renderSvc();
     else if(TAB === 'city') h += renderCity();
     else h += renderGarage();
@@ -1056,7 +1057,7 @@ function render(){
 
 function renderNav(){
   if(!S.veh){ $('nav').innerHTML=''; return }
-  var items=[['drive','上路'],['hw','车间'],['car','仓'],['tower','塔'],['rank','榜'],['garage','家'],['city','城']];
+  var items=[['drive','上路'],['hw','车间'],['car','仓'],['tower','塔'],['garage','家'],['city','城']];
   $('nav').innerHTML=items.map(function(it){
     var cls=(TAB===it[0]?'on':'');
     var dot=(it[0]==='tower'&&towerReady())?'<i class="dot on"></i>':'<i class="dot"></i>';
@@ -1646,6 +1647,13 @@ function openShop(){
     });
   }
   h+='<div class="btns" style="margin-top:14px"><button class="big ghost" onclick="A.close()">关 上</button></div>';
+  modal(h);
+}
+
+/* ---- 榜单弹窗 ---- */
+function openRank(){
+  var h = renderRank();
+  h += '<div class="btns" style="margin-top:14px"><button class="big ghost" onclick="A.close()">关 上</button></div>';
   modal(h);
 }
 
@@ -3373,7 +3381,7 @@ function sfxToggle(){ S.sfx = sfxOn() ? 0 : 1; save(); render(); snd('tap') }
 A.towerSel=towerSel; A.towerStart=towerStart; A.towerEnter=towerEnter; A.towerCard=towerCard; A.towerRule=towerRule; A.towerNote=towerNote; A.sfxToggle=sfxToggle;
 A.evPick=evPick; A.calm=calm; A.showEv=function(){ if(S.curEv!=null) showEvent(S.curEv) }; A.raw=function(){ return S }; A.maybeEv=maybeEvent; A.evList=function(){ return EVENTS.map(function(e){return e.t}) };
 A.snack=snack; A.trinkets=function(){ return (S.trinkets||[]) }; A.lootPool=function(q){ return POOL[q].map(function(p){return p.k}) };
-A.dunEnter=dunEnter; A.dunChoice=dunChoice; A.dunClose=dunClose; A.dunDeep=dunDeep; A.dunLeave=dunLeave; A.openShop=openShop; A.stallBuy=stallBuy; A.sell=sell; A.cancelAsk=cancelAsk; A.cancelSeg=cancelSeg; A.toolUse=toolUse; A.cityBuy=cityBuy; A.citySlot=citySlot; A.citySet=citySet; A.cityClear=cityClear; A.cityPark=cityPark; A.toolAdd=toolAdd; A.tools=function(){ return TOOLS };
+A.dunEnter=dunEnter; A.dunChoice=dunChoice; A.dunClose=dunClose; A.dunDeep=dunDeep; A.dunLeave=dunLeave; A.openShop=openShop; A.stallBuy=stallBuy; A.sell=sell; A.cancelAsk=cancelAsk; A.cancelSeg=cancelSeg; A.toolUse=toolUse; A.cityBuy=cityBuy; A.citySlot=citySlot; A.citySet=citySet; A.cityClear=cityClear; A.cityPark=cityPark; A.toolAdd=toolAdd; A.tools=function(){ return TOOLS }; A.openRank=openRank;
 
 /* ---------- 启动 ---------- */
 S=load();
