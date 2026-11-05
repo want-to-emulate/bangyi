@@ -480,7 +480,7 @@ var VEH={
 /* 载具等级（累积生效） */
 var LV=[
   {km:0,   mods:0, n:'破车', d:'还在跑'},
-  {km:100, mods:1, n:'修好', d:'汽油 3 → 4 格',  fuel:1},
+  {km:100, mods:1, n:'修好', d:'汽油 6 → 7 格，副本能多跑一趟',  fuel:1},
   {km:200, mods:1, n:'加架', d:'后备箱 +4 格',    slot:4},
   {km:400, mods:1, n:'铺内', d:'状态衰减 −20%',   decay:.2},
   {km:700, mods:1, n:'通电', d:'车内挂位 +2',     hang:2},
@@ -528,6 +528,7 @@ var SCHED0={
   fri:[[3,4,'通信系统建模与仿真B','11409H']]
 };
 
+var PAINT=['夜行','灰烬','旧金','远灯','雪线','回声','无归','第一班车'];
 var GHOSTS=[
   {n:'老陈',s:1.06},{n:'铁皮',s:1.02},{n:'M',s:.98},{n:'三花',s:.94},
   {n:'阿岚',s:.90},{n:'黑鸟',s:.86},{n:'白噪音',s:.82},{n:'小满',s:.78}
@@ -610,14 +611,17 @@ function todayList(){
 }
 function nowInfo(){
   var d=new Date(), mins=d.getHours()*60+d.getMinutes();
-  var busy=todayList(), cur=null, next=null, i;
+  var busy=todayList(), cur=null, next=null, nextL=null, i;
   for(i=0;i<busy.length;i++){
     if(mins>=busy[i][0]&&mins<busy[i][1]){ cur=busy[i] }
-    else if(busy[i][0]>mins){ next=busy[i]; break }
+    if(busy[i][0]>mins){
+      if(!next) next=busy[i];
+      if(!nextL && busy[i][4]==='listen') nextL=busy[i];
+    }
   }
   var inClass=!!(cur&&cur[4]==='listen');
   return {mins:mins,dw:d.getDay(),busy:busy,cur:cur,next:next,inClass:inClass,
-    free: inClass?0:(next? next[0]-mins : 1440-mins)};
+    free: inClass?0:(nextL? nextL[0]-mins : 1440-mins)};
 }
 function roadBonus(){
   var d=new Date(), h=d.getHours(), dw=d.getDay();
@@ -744,6 +748,8 @@ function finishSeg(){
   if(!S.days[t].m3 && dm>=3){ S.days[t].m3=1; S.boxes=(S.boxes||0)+1; mtitle.push('今天满 3 公里 · 车顶多一个箱子') }
   if(!S.days[t].m5 && dm>=5){ S.days[t].m5=1; S.points+=2; mtitle.push('今天满 5 公里 · 多给 2 点') }
   if(!S.days[t].m8 && dm>=8){ S.days[t].m8=1; S.boxes=(S.boxes||0)+1; mtitle.push('今天满 8 公里 · 又多了个箱子') }
+  if(!S.days[t].m10 && dm>=10){ S.days[t].m10=1; S.mods+=1; mtitle.push('今天满 10 公里 · 车行给了一件改装件') }
+  if(S.km>=TOTAL){ var tier=Math.floor((S.km-TOTAL)/100); if(tier>(S.paint||0)){ S.paint=tier; mtitle.push('解锁涂装「'+PAINT[(tier-1)%PAINT.length]+'」') } }
   if(mtitle.length) setTimeout(function(){ toast(mtitle.join(' · ')); snd('coin') }, 260);
   S.streak = (S.lastSeg&&dayDiff(S.lastSeg,t)===1)?S.streak+1:(S.lastSeg===t?S.streak:1);
   S.lastSeg=t;
@@ -1110,7 +1116,9 @@ function wheelAt(x,r,drv){
    +'<circle cx="'+x+'" cy="140" r="'+(r*0.12).toFixed(1)+'" fill="#161c24"/></g>';
 }
 function carSVG(type,lvl,drv){
-  var B='#46525f', B2='#333c47', BH='rgba(255,255,255,.14)', SH='rgba(0,0,0,.32)', G='#a9cbe6';
+  var PB=['#46525f','#2f3540','#6b5228','#3a4a3c','#4b3a55','#5d4037','#26384a','#7a5c2e'];
+  var pB=(typeof S!=='undefined'&&S&&S.paint)?PB[(S.paint-1)%PB.length]:PB[0];
+  var B=pB, B2='#333c47', BH='rgba(255,255,255,.14)', SH='rgba(0,0,0,.32)', G='#a9cbe6';
   var body='', glass='', trim='', roof=106, wx=[0,0], wr=10;
 
   if(type==='rv'){
@@ -2467,7 +2475,7 @@ function renderDrive(){
    +toolBtn(IC.eye,'想学没学','A.confess()')
    +(S.st.inf>0?toolBtn(IC.eye,calmLbl(),'A.calm()'):'')
    +'</div>'
-   +'<div class="stat">今天 '+((S.days[dkey()]||{}).seg||0)+' 段 · '+((S.days[dkey()]||{}).km||0)+' km · '+S.points+' 点'+(S.streak>1?' · 连续 '+S.streak+' 段':'')+'</div>'
+   +'<div class="stat">今天 '+((S.days[dkey()]||{}).seg||0)+' 段 · '+(((S.days[dkey()]||{}).km||0)*5/6).toFixed(1)+' 小时 · '+S.points+' 点'+(S.streak>1?' · 连续 '+S.streak+' 段':'')+'</div>'
    +'</div>';
   h+=mapHTML();
   h+=lag(S.km);
@@ -2503,7 +2511,13 @@ function gapTxt(ni){
 function lag(km){
   var left=Math.max(0,dayDiff(dkey(),EXAM));
   var need=left>0?Math.max(0,(TOTAL-km))/left*7:0;
-  if(km>=TOTAL) return '<div class="lag"><b class="ahead">你已经提前到终点站了</b> · 剩 '+left+' 天 · 多跑的都算数，不会白跑</div>';
+  if(km>=TOTAL){
+    var pace=TOTAL/Math.max(1,dayDiff(S.start,EXAM)), done=dayDiff(S.start,dkey())+1;
+    var ahead=Math.max(0,Math.round(km/pace)-done);
+    ahead=Math.min(ahead, Math.max(0,dayDiff(dkey(),EXAM)));
+    var tier=Math.floor((km-TOTAL)/100), nx=((tier+1)*100-(km-TOTAL)).toFixed(0);
+    return '<div class="lag"><b class="ahead">到终点站了 · 比日历快 '+ahead+' 天</b> · 再跑 '+nx+' km 解锁涂装「'+PAINT[tier%PAINT.length]+'」</div>';
+  }
   return '<div class="lag">还差 '+(TOTAL-km).toFixed(0)+' km · 剩 '+left+' 天 · 每周要跑 <b class="'+(need>20?'':'ahead')+'">'+need.toFixed(1)+' 段</b></div>';
 }
 
@@ -2772,7 +2786,8 @@ function renderGarage(){
 
   h+='<div class="panel"><p class="ptitle">里 程</p>'
    +'<div class="item"><div class="n">当前区域</div><div class="c">'+ZONES[zoneOf(S.km)].n+'</div></div>'
-   +'<div class="item"><div class="n">距终点</div><div class="c">'+Math.max(0,TOTAL-S.km).toFixed(1)+' km</div></div>'
+   +'<div class="item"><div class="n">距终点</div><div class="c">'+(S.km>=TOTAL?('已到 · 超出 '+(S.km-TOTAL).toFixed(1)+' km'):(Math.max(0,TOTAL-S.km).toFixed(1)+' km'))+'</div></div>'
+   +'<div class="item"><div class="n">解锁涂装</div><div class="c">'+(S.paint||0)+' 套</div></div>'
    +'<div class="item"><div class="n">箱子里还压着</div><div class="c">'+S.boxes+' 个</div></div></div>';
 
   if(S.evLog && S.evLog.length){
